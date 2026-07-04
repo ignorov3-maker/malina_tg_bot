@@ -1,0 +1,23 @@
+name: malina
+
+services:
+  malina:
+    build:
+      context: .
+    container_name: malina-tg-bot
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      HOST: 0.0.0.0
+      PORT: 4174
+      APP_DATA_DIR: /var/lib/malina
+    ports:
+      - "127.0.0.1:4174:4174"
+    volumes:
+      - malina-dialogs:/var/lib/malina/data
+      - ./managers.json:/var/lib/malina/managers.json
+      - ./pending-managers.json:/var/lib/malina/pending-managers.json
+
+volumes:
+  malina-dialogs:

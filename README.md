@@ -96,6 +96,28 @@ powershell -ExecutionPolicy Bypass -File .\status-local.ps1
 powershell -ExecutionPolicy Bypass -File .\stop-local.ps1
 ```
 
+Запуск через Docker:
+
+```powershell
+docker compose up -d --build
+```
+
+Проверка Docker-контейнера:
+
+```powershell
+docker compose ps
+Invoke-RestMethod http://127.0.0.1:4174/api/health
+```
+
+Остановка Docker-контейнера:
+
+```powershell
+docker compose down
+```
+
+Если проект лежит в папке с кириллицей или пробелами и Docker Compose ругается на имя проекта, в `docker-compose.yml` уже задано явное имя `malina`.
+Контейнер использует локальные `managers.json` и `pending-managers.json`, а историю диалогов хранит в Docker volume `malina_malina-dialogs`.
+
 ## Как добавить менеджера
 
 1. Менеджер открывает Telegram-бота и отправляет `/start`.
@@ -147,7 +169,7 @@ Invoke-RestMethod "https://your-domain.ru/api/managers/approve" -Method Post -He
 - `server.js` - HTTP API, хранение диалогов и Telegram polling.
 - `.env.example` - пример переменных окружения.
 - `render.yaml` - конфигурация для деплоя на Render.
-- `Dockerfile` - универсальная сборка для VPS и Docker-хостингов.
+- `Dockerfile`, `docker-compose.yml` - универсальная сборка для VPS, Docker-хостингов и локального Docker Desktop.
 - `managers.example.json` - пример списка менеджеров.
 - `start.ps1`, `run-local.cmd`, `start-background.ps1`, `status-local.ps1`, `stop-local.ps1` - локальный запуск на Windows.
 - `data/leads.json` - локальное хранилище диалогов, не коммитится.

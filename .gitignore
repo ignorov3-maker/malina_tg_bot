@@ -1,0 +1,5 @@
+.env
+data/
+managers.json
+pending-managers.json
+node_modules/

@@ -1,0 +1,10 @@
+{
+  "managers": [
+    {
+      "id": "123456789",
+      "name": "Manager Name",
+      "username": "telegram_username",
+      "enabled": true
+    }
+  ]
+}

@@ -118,6 +118,21 @@ docker compose down
 Если проект лежит в папке с кириллицей или пробелами и Docker Compose ругается на имя проекта, в `docker-compose.yml` уже задано явное имя `malina`.
 Контейнер использует локальные `managers.json` и `pending-managers.json`, а историю диалогов хранит в Docker volume `malina_malina-dialogs`.
 
+Временная публичная ссылка через Cloudflare Tunnel:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\start-online-tunnel.ps1
+```
+
+Скрипт запустит Docker-контейнер и выдаст HTTPS-ссылку вида `https://...trycloudflare.com`.
+Ссылка работает, пока включен ПК, Docker Desktop и процесс `cloudflared`.
+
+Остановить публичную ссылку:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\stop-online-tunnel.ps1
+```
+
 ## Как добавить менеджера
 
 1. Менеджер открывает Telegram-бота и отправляет `/start`.
@@ -172,6 +187,7 @@ Invoke-RestMethod "https://your-domain.ru/api/managers/approve" -Method Post -He
 - `Dockerfile`, `docker-compose.yml` - универсальная сборка для VPS, Docker-хостингов и локального Docker Desktop.
 - `managers.example.json` - пример списка менеджеров.
 - `start.ps1`, `run-local.cmd`, `start-background.ps1`, `status-local.ps1`, `stop-local.ps1` - локальный запуск на Windows.
+- `start-online-tunnel.ps1`, `stop-online-tunnel.ps1` - временный онлайн-доступ через Cloudflare Tunnel.
 - `data/leads.json` - локальное хранилище диалогов, не коммитится.
 - `managers.json` - реальные менеджеры, не коммитятся.
 - `pending-managers.json` - ожидающие менеджеры, не коммитятся.

@@ -222,7 +222,19 @@
         </header>
         <div class="chat-body" data-chat-body>
           <div class="bot-bubble">
-            Здравствуйте! Помогу рассчитать упаковку. Что нужно напечатать?
+            Здравствуйте! Оставьте контакты и тему, затем напишите сообщение для расчета.
+          </div>
+          <div class="contact-fields" data-contact-fields>
+            <input data-client-name type="text" placeholder="Ваше имя" autocomplete="name">
+            <input data-client-email type="email" placeholder="Email" autocomplete="email">
+            <select data-client-topic>
+              <option value="">Тема обращения</option>
+              <option value="Пакеты">Пакеты</option>
+              <option value="Коробки">Коробки</option>
+              <option value="Наклейки">Наклейки</option>
+              <option value="Шопперы">Шопперы</option>
+              <option value="Другое">Другое</option>
+            </select>
           </div>
           <div class="choice-row">
             <button type="button" data-choice="Пакеты">Пакеты</button>

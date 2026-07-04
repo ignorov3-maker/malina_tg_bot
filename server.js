@@ -98,7 +98,10 @@ async function handleClientMessage(request, response) {
   const payload = await readJson(request);
   const sessionId = cleanText(payload.sessionId || "");
   const requestedDialogId = cleanText(payload.leadId || "");
-  const topic = cleanText(payload.product || "Не выбрана");
+  const rawTopic = cleanText(payload.topic || payload.product || "");
+  const topic = rawTopic || "Не выбрана";
+  const clientName = cleanText(payload.clientName || payload.name || "");
+  const clientEmail = cleanText(payload.clientEmail || payload.email || "");
   const page = cleanText(payload.page || "");
   const text = cleanText(payload.message || "");
 
@@ -114,11 +117,22 @@ async function handleClientMessage(request, response) {
     requestedDialogId,
     sessionId,
     topic,
+    clientName,
+    clientEmail,
     page
   });
   const dialog = result.dialog;
 
-  dialog.topic = topic || dialog.topic;
+  if (result.isNew && (!clientName || !isEmail(clientEmail) || !rawTopic)) {
+    return sendJson(response, 400, {
+      ok: false,
+      message: "Для начала диалога нужно указать имя, email, тему и сообщение"
+    });
+  }
+
+  dialog.topic = rawTopic || dialog.topic || topic;
+  dialog.clientName = clientName || dialog.clientName;
+  dialog.clientEmail = clientEmail || dialog.clientEmail;
   dialog.page = page || dialog.page;
   dialog.updatedAt = nowIso();
   dialog.lastClientAt = dialog.updatedAt;
@@ -183,6 +197,9 @@ function handleDialogMessages(response, dialogId) {
     leadId: dialog.id,
     leadNumber: dialog.number,
     status: dialog.status,
+    topic: dialog.topic,
+    clientName: dialog.clientName || "",
+    clientEmail: dialog.clientEmail || "",
     assignedManagerId: dialog.assignedManagerId || "",
     messages: dialog.messages
   });
@@ -246,6 +263,8 @@ function getOrCreateOpenDialog(store, options) {
     sessionId: options.sessionId,
     status: "new",
     topic: options.topic,
+    clientName: options.clientName,
+    clientEmail: options.clientEmail,
     page: options.page,
     assignedManagerId: "",
     assignedAt: "",
@@ -294,13 +313,15 @@ function formatNewDialogText(dialog) {
   const clientMessages = dialog.messages
     .filter((message) => message.channel === "client")
     .slice(-5)
-    .map((message) => `Клиент: ${message.text}`)
+    .map((message) => `${formatClientShortName(dialog)}: ${message.text}`)
     .join("\n");
 
   return [
     "Новый клиент с сайта",
     "",
     `Клиент: #${dialog.number}`,
+    dialog.clientName ? `Имя: ${dialog.clientName}` : "",
+    dialog.clientEmail ? `Email: ${dialog.clientEmail}` : "",
     `Тема: ${dialog.topic || "не выбрана"}`,
     dialog.page ? `Страница: ${dialog.page}` : "",
     "",
@@ -313,12 +334,11 @@ function formatNewDialogText(dialog) {
 }
 
 function formatClientMessageText(dialog, clientText) {
-  return [
-    `Клиент #${dialog.number}:`,
-    clientText,
-    "",
-    "Ответьте обычным сообщением. Завершить диалог можно командой /done."
-  ].join("\n");
+  return `${formatClientShortName(dialog)}: ${clientText}`;
+}
+
+function formatClientShortName(dialog) {
+  return dialog.clientName || `Клиент #${dialog.number}`;
 }
 
 function formatFinishReminderText(dialog) {
@@ -773,6 +793,8 @@ function normalizeDialog(dialog) {
     status: ["active", "queued", "closed"].includes(dialog.status) ? dialog.status : "closed",
     topic: dialog.topic || dialog.product || "Не выбрана",
     product: dialog.product || dialog.topic || "Не выбрана",
+    clientName: dialog.clientName || "",
+    clientEmail: dialog.clientEmail || "",
     page: dialog.page || "",
     assignedManagerId: dialog.assignedManagerId || "",
     assignedAt: dialog.assignedAt || "",
@@ -864,6 +886,10 @@ function loadDotEnv() {
 
 function cleanText(value) {
   return String(value).trim().slice(0, 3000);
+}
+
+function isEmail(value) {
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
 }
 
 function nowIso() {

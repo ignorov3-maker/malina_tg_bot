@@ -704,6 +704,28 @@ h1 {
   background: var(--red);
 }
 
+.contact-fields {
+  display: grid;
+  gap: 8px;
+}
+
+.contact-fields input,
+.contact-fields select {
+  width: 100%;
+  min-height: 42px;
+  padding: 0 12px;
+  color: var(--ink);
+  background: white;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+}
+
+.contact-fields input:disabled,
+.contact-fields select:disabled {
+  cursor: not-allowed;
+  opacity: 0.62;
+}
+
 .chat-action {
   display: flex;
   justify-content: flex-start;

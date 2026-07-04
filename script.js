@@ -1,8 +1,11 @@
 const widget = document.querySelector("[data-chat-widget]");
 const body = document.querySelector("[data-chat-body]");
 const form = document.querySelector("[data-chat-form]");
-const input = form.querySelector("input");
-const submitButton = form.querySelector("button");
+const input = form.querySelector("[data-chat-message]");
+const fileInput = form.querySelector("[data-chat-file]");
+const attachButton = form.querySelector("[data-attach-file]");
+const filePreview = form.querySelector("[data-file-preview]");
+const submitButton = form.querySelector("[data-send-message]");
 const contactFields = document.querySelector("[data-contact-fields]");
 const nameInput = document.querySelector("[data-client-name]");
 const emailInput = document.querySelector("[data-client-email]");
@@ -10,6 +13,7 @@ const topicInput = document.querySelector("[data-client-topic]");
 
 const sessionKey = "malina-chat-session";
 const dialogKey = "malina-chat-dialog";
+const maxAttachmentBytes = 8 * 1024 * 1024;
 const sessionId =
   localStorage.getItem(sessionKey) ||
   (window.crypto && crypto.randomUUID ? crypto.randomUUID() : String(Date.now()));
@@ -33,6 +37,8 @@ const closeChat = () => {
 
 const setFormDisabled = (disabled) => {
   input.disabled = disabled;
+  fileInput.disabled = disabled;
+  attachButton.disabled = disabled;
   submitButton.disabled = disabled;
 };
 
@@ -77,16 +83,74 @@ const validateStartFields = () => {
   return true;
 };
 
-const addBubble = (text, type = "bot", messageId = "") => {
+const formatBytes = (bytes) => {
+  if (!bytes) return "0 Б";
+  if (bytes < 1024) return `${bytes} Б`;
+  if (bytes < 1024 * 1024) return `${Math.round(bytes / 1024)} КБ`;
+  return `${(bytes / (1024 * 1024)).toFixed(1)} МБ`;
+};
+
+const describeAttachments = (attachments = []) =>
+  attachments
+    .map((attachment) => `Файл: ${attachment.name || "без имени"} (${formatBytes(attachment.size || 0)})`)
+    .join("\n");
+
+const addBubble = (text, type = "bot", messageId = "", attachments = []) => {
   if (messageId && renderedMessageIds.has(messageId)) return;
 
   const bubble = document.createElement("div");
   bubble.className = type === "user" ? "user-bubble" : "bot-bubble";
-  bubble.textContent = text;
+  const attachmentText = describeAttachments(attachments);
+  bubble.textContent = [text, attachmentText].filter(Boolean).join("\n");
   body.appendChild(bubble);
   body.scrollTop = body.scrollHeight;
 
   if (messageId) renderedMessageIds.add(messageId);
+};
+
+const readFileAsBase64 = (file) =>
+  new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.addEventListener("load", () => {
+      const result = String(reader.result || "");
+      resolve(result.includes(",") ? result.split(",").pop() : result);
+    });
+    reader.addEventListener("error", () => reject(new Error("Не удалось прочитать файл")));
+    reader.readAsDataURL(file);
+  });
+
+const buildAttachment = async () => {
+  const file = fileInput.files && fileInput.files[0];
+  if (!file) return null;
+
+  if (file.size > maxAttachmentBytes) {
+    throw new Error(`Файл слишком большой. Максимум ${formatBytes(maxAttachmentBytes)}.`);
+  }
+
+  return {
+    name: file.name,
+    type: file.type || "application/octet-stream",
+    size: file.size,
+    data: await readFileAsBase64(file)
+  };
+};
+
+const clearAttachment = () => {
+  fileInput.value = "";
+  filePreview.hidden = true;
+  filePreview.textContent = "";
+};
+
+const updateFilePreview = () => {
+  const file = fileInput.files && fileInput.files[0];
+
+  if (!file) {
+    clearAttachment();
+    return;
+  }
+
+  filePreview.hidden = false;
+  filePreview.textContent = `${file.name} · ${formatBytes(file.size)}`;
 };
 
 const addActionButton = (text, onClick, messageId = "") => {
@@ -147,7 +211,7 @@ const showDialogClosed = (data) => {
   }
 };
 
-const sendClientMessage = async (message) => {
+const sendClientMessage = async (message, attachment = null) => {
   const contact = getContact();
   const response = await fetch("/api/leads", {
     method: "POST",
@@ -160,6 +224,7 @@ const sendClientMessage = async (message) => {
       topic: contact.topic,
       product: contact.topic,
       message,
+      attachments: attachment ? [attachment] : [],
       page: location.href
     })
   });
@@ -182,7 +247,7 @@ const syncMessages = async () => {
 
   data.messages.forEach((message) => {
     if (message.channel === "manager") {
-      addBubble(message.text, "bot", message.id);
+      addBubble(message.text, "bot", message.id, message.attachments || []);
     }
   });
 
@@ -228,11 +293,15 @@ document.querySelectorAll("[data-choice]").forEach((button) => {
   });
 });
 
+attachButton.addEventListener("click", () => fileInput.click());
+fileInput.addEventListener("change", updateFilePreview);
+
 form.addEventListener("submit", async (event) => {
   event.preventDefault();
   const value = input.value.trim();
+  const hasFile = Boolean(fileInput.files && fileInput.files[0]);
 
-  if (!value) return;
+  if (!value && !hasFile) return;
 
   if (dialogClosed) {
     resetForNewDialog();
@@ -241,18 +310,22 @@ form.addEventListener("submit", async (event) => {
 
   if (!validateStartFields()) return;
 
-  addBubble(value, "user");
-  input.value = "";
-  setFormDisabled(true);
+  let attachment = null;
 
   try {
-    const result = await sendClientMessage(value);
+    attachment = await buildAttachment();
+    addBubble(value || "Отправлен файл", "user", "", attachment ? [attachment] : []);
+    input.value = "";
+    setFormDisabled(true);
+
+    const result = await sendClientMessage(value, attachment);
     const previousDialogId = activeDialogId;
     activeDialogId = result.leadId;
     dialogClosed = false;
     setFormDisabled(false);
     setContactDisabled(true);
     localStorage.setItem(dialogKey, activeDialogId);
+    clearAttachment();
 
     if (previousDialogId !== activeDialogId) {
       renderedMessageIds = new Set();

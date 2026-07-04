@@ -10,6 +10,7 @@ loadDotEnv();
 
 const storageRoot = process.env.APP_DATA_DIR ? path.resolve(process.env.APP_DATA_DIR) : root;
 const dataDir = path.join(storageRoot, "data");
+const uploadsDir = path.join(storageRoot, "uploads");
 const managersPath = path.join(storageRoot, "managers.json");
 const pendingManagersPath = path.join(storageRoot, "pending-managers.json");
 const dialogsPath = path.join(dataDir, "leads.json");
@@ -21,6 +22,8 @@ const host = process.env.HOST || "127.0.0.1";
 const botToken = process.env.TELEGRAM_BOT_TOKEN || "";
 const adminApproveToken = process.env.ADMIN_APPROVE_TOKEN || "";
 const finishReminderMs = Number(process.env.FINISH_REMINDER_MS || 5 * 60 * 1000);
+const maxUploadBytes = Number(process.env.MAX_UPLOAD_BYTES || 8 * 1024 * 1024);
+const maxRequestBytes = Number(process.env.MAX_REQUEST_BYTES || 12 * 1024 * 1024);
 const botApi = botToken ? `https://api.telegram.org/bot${botToken}` : "";
 const publicFiles = new Set(["/index.html", "/styles.css", "/script.js"]);
 const mimeTypes = {
@@ -79,6 +82,9 @@ const server = http.createServer(async (request, response) => {
     return sendJson(response, 405, { ok: false, message: "Method not allowed" });
   } catch (error) {
     console.error(error);
+    if (error.message === "Request body too large") {
+      return sendJson(response, 413, { ok: false, message: "Запрос слишком большой" });
+    }
     return sendJson(response, 500, { ok: false, message: "Server error" });
   }
 });
@@ -104,11 +110,12 @@ async function handleClientMessage(request, response) {
   const clientEmail = cleanText(payload.clientEmail || payload.email || "");
   const page = cleanText(payload.page || "");
   const text = cleanText(payload.message || "");
+  const rawAttachments = Array.isArray(payload.attachments) ? payload.attachments : [];
 
-  if (!sessionId || !text) {
+  if (!sessionId || (!text && rawAttachments.length === 0)) {
     return sendJson(response, 400, {
       ok: false,
-      message: "Нужно передать sessionId и сообщение"
+      message: "Нужно передать sessionId, сообщение или файл"
     });
   }
 
@@ -126,7 +133,7 @@ async function handleClientMessage(request, response) {
   if (result.isNew && (!clientName || !isEmail(clientEmail) || !rawTopic)) {
     return sendJson(response, 400, {
       ok: false,
-      message: "Для начала диалога нужно указать имя, email, тему и сообщение"
+      message: "Для начала диалога нужно указать имя, email и тему"
     });
   }
 
@@ -136,14 +143,20 @@ async function handleClientMessage(request, response) {
   dialog.page = page || dialog.page;
   dialog.updatedAt = nowIso();
   dialog.lastClientAt = dialog.updatedAt;
-  dialog.messages.push(createMessage("client", text));
+  let attachments = [];
+  try {
+    attachments = saveClientAttachments(dialog, rawAttachments);
+  } catch (error) {
+    return sendJson(response, 400, { ok: false, message: error.message });
+  }
+  dialog.messages.push(createMessage("client", text, { attachments }));
 
   let event = "message_saved";
   let sentToManagers = 0;
 
   if (dialog.status === "active" && dialog.assignedManagerId) {
     writeDialogStore(store);
-    sentToManagers = await notifyAssignedManager(dialog, text, result.isNew ? "new" : "continuation");
+    sentToManagers = await notifyAssignedManager(dialog, text, result.isNew ? "new" : "continuation", attachments);
     event = result.isNew ? "dialog_started" : "message_delivered";
   } else if (dialog.status === "queued") {
     writeDialogStore(store);
@@ -154,7 +167,7 @@ async function handleClientMessage(request, response) {
     if (manager) {
       assignDialog(dialog, manager.id);
       writeDialogStore(store);
-      sentToManagers = await notifyAssignedManager(dialog, text, "new");
+      sentToManagers = await notifyAssignedManager(dialog, text, "new", attachments);
 
       if (sentToManagers > 0) {
         event = "dialog_started";
@@ -294,11 +307,51 @@ function queueDialog(dialog) {
   dialog.updatedAt = nowIso();
 }
 
-async function notifyAssignedManager(dialog, clientText, kind) {
+function saveClientAttachments(dialog, rawAttachments) {
+  return rawAttachments.slice(0, 1).map((attachment) => {
+    const originalName = cleanText(attachment.name || "file");
+    const safeName = sanitizeFileName(originalName);
+    const type = cleanText(attachment.type || "application/octet-stream").slice(0, 120);
+    const data = String(attachment.data || "").replace(/^data:[^,]+,/, "");
+    const buffer = Buffer.from(data, "base64");
+
+    if (!data || buffer.length === 0) {
+      throw new Error("Файл пустой или поврежден");
+    }
+
+    if (buffer.length > maxUploadBytes) {
+      throw new Error(`Файл слишком большой. Максимум ${Math.round(maxUploadBytes / (1024 * 1024))} МБ.`);
+    }
+
+    const dialogUploadsDir = path.join(uploadsDir, dialog.id);
+    if (!fs.existsSync(dialogUploadsDir)) fs.mkdirSync(dialogUploadsDir, { recursive: true });
+
+    const id = `file_${Date.now()}_${Math.random().toString(16).slice(2)}`;
+    const filePath = path.join(dialogUploadsDir, `${id}_${safeName}`);
+    fs.writeFileSync(filePath, buffer);
+
+    return {
+      id,
+      name: originalName || safeName,
+      type,
+      size: buffer.length,
+      path: filePath
+    };
+  });
+}
+
+function sanitizeFileName(name) {
+  const fallback = "file";
+  const onlyName = path.basename(name || fallback);
+  const safe = onlyName.replace(/[<>:"/\\|?*\x00-\x1f]/g, "_").replace(/\s+/g, " ").trim();
+  return safe.slice(0, 120) || fallback;
+}
+
+async function notifyAssignedManager(dialog, clientText, kind, attachments = []) {
   if (!botToken || !dialog.assignedManagerId) return 0;
 
   const isNewDialog = kind === "new";
-  const text = isNewDialog ? formatNewDialogText(dialog) : formatClientMessageText(dialog, clientText);
+  const text = isNewDialog ? formatNewDialogText(dialog) : formatClientMessageText(dialog, clientText, attachments);
   const sent = await sendManagerMessage(dialog, dialog.assignedManagerId, text, {
     finishButton: isNewDialog
   }).catch((error) => {
@@ -306,14 +359,22 @@ async function notifyAssignedManager(dialog, clientText, kind) {
     return null;
   });
 
-  return sent ? 1 : 0;
+  if (!sent) return 0;
+
+  for (const attachment of attachments) {
+    await sendManagerDocument(dialog, dialog.assignedManagerId, attachment).catch((error) => {
+      console.error(`Telegram document send failed for ${dialog.assignedManagerId}:`, error.message);
+    });
+  }
+
+  return 1;
 }
 
 function formatNewDialogText(dialog) {
   const clientMessages = dialog.messages
     .filter((message) => message.channel === "client")
     .slice(-5)
-    .map((message) => `${formatClientShortName(dialog)}: ${message.text}`)
+    .map((message) => formatClientMessageText(dialog, message.text, message.attachments || []))
     .join("\n");
 
   return [
@@ -333,8 +394,20 @@ function formatNewDialogText(dialog) {
     .join("\n");
 }
 
-function formatClientMessageText(dialog, clientText) {
-  return `${formatClientShortName(dialog)}: ${clientText}`;
+function formatClientMessageText(dialog, clientText, attachments = []) {
+  const text = clientText || "отправлен файл";
+  return [`${formatClientShortName(dialog)}: ${text}`, formatAttachmentLines(attachments)].filter(Boolean).join("\n");
+}
+
+function formatAttachmentLines(attachments = []) {
+  return attachments.map((attachment) => `Файл: ${attachment.name} (${formatFileSize(attachment.size)})`).join("\n");
+}
+
+function formatFileSize(size) {
+  const bytes = Number(size || 0);
+  if (bytes < 1024) return `${bytes} Б`;
+  if (bytes < 1024 * 1024) return `${Math.round(bytes / 1024)} КБ`;
+  return `${(bytes / (1024 * 1024)).toFixed(1)} МБ`;
 }
 
 function formatClientShortName(dialog) {
@@ -377,6 +450,28 @@ async function sendManagerMessage(dialog, managerId, text, options = {}) {
     if (options.finishButton) {
       rememberFinishReminder(dialog.id);
     }
+  }
+
+  return result;
+}
+
+async function sendManagerDocument(dialog, managerId, attachment) {
+  if (!attachment?.path || !fs.existsSync(attachment.path)) {
+    throw new Error("Attachment file is missing");
+  }
+
+  const fileBuffer = fs.readFileSync(attachment.path);
+  const form = new FormData();
+  const blob = new Blob([fileBuffer], { type: attachment.type || "application/octet-stream" });
+
+  form.append("chat_id", managerId);
+  form.append("document", blob, attachment.name || "file");
+  form.append("caption", `Файл клиента #${dialog.number}`);
+
+  const result = await telegramForm("sendDocument", form);
+
+  if (result?.ok) {
+    rememberTelegramMessage(dialog.id, managerId, result.result.message_id);
   }
 
   return result;
@@ -618,7 +713,13 @@ async function dispatchNextQueuedDialog(managerId) {
 
   assignDialog(nextDialog, managerId);
   writeDialogStore(store);
-  await sendManagerMessage(nextDialog, managerId, formatNewDialogText(nextDialog), { finishButton: true });
+  await notifyAssignedManager(nextDialog, "", "new", getClientAttachments(nextDialog));
+}
+
+function getClientAttachments(dialog) {
+  return (dialog.messages || [])
+    .filter((message) => message.channel === "client")
+    .flatMap((message) => message.attachments || []);
 }
 
 function getFreeManager(store = readDialogStore()) {
@@ -657,6 +758,24 @@ async function telegram(method, payload) {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(payload)
+  });
+  const data = await response.json();
+
+  if (!response.ok || !data.ok) {
+    throw new Error(data.description || `Telegram API error ${response.status}`);
+  }
+
+  return data;
+}
+
+async function telegramForm(method, form) {
+  if (!botApi) {
+    throw new Error("Telegram bot token is missing");
+  }
+
+  const response = await fetch(`${botApi}/${method}`, {
+    method: "POST",
+    body: form
   });
   const data = await response.json();
 
@@ -839,7 +958,7 @@ function readJson(request) {
 
     request.on("data", (chunk) => {
       body += chunk;
-      if (body.length > 1024 * 1024) {
+      if (body.length > maxRequestBytes) {
         request.destroy();
         reject(new Error("Request body too large"));
       }
@@ -858,6 +977,7 @@ function readJson(request) {
 function ensureStorage() {
   if (!fs.existsSync(storageRoot)) fs.mkdirSync(storageRoot, { recursive: true });
   if (!fs.existsSync(dataDir)) fs.mkdirSync(dataDir);
+  if (!fs.existsSync(uploadsDir)) fs.mkdirSync(uploadsDir);
   if (!fs.existsSync(dialogsPath)) writeDialogStore({ counter: 1044, leads: [] });
   if (!fs.existsSync(managersPath)) writeManagersStore({ managers: [] });
   if (!fs.existsSync(pendingManagersPath)) writePendingManagers({ pending: [] });

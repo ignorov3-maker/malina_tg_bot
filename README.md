@@ -53,6 +53,8 @@ PORT=4174
 HOST=127.0.0.1
 APP_DATA_DIR=.
 FINISH_REMINDER_MS=300000
+MAX_UPLOAD_BYTES=8388608
+MAX_REQUEST_BYTES=12582912
 ```
 
 4. Запустите сервер:
@@ -117,8 +119,9 @@ docker compose down
 ```
 
 Если проект лежит в папке с кириллицей или пробелами и Docker Compose ругается на имя проекта, в `docker-compose.yml` уже задано явное имя `malina`.
-Контейнер использует локальные `managers.json` и `pending-managers.json`, а историю диалогов хранит в Docker volume `malina_malina-dialogs`.
+Контейнер использует локальные `managers.json` и `pending-managers.json`, историю диалогов хранит в Docker volume `malina_malina-dialogs`, а файлы - в `malina_malina-uploads`.
 По умолчанию кнопка завершения диалога повторно отправляется менеджеру через 5 минут. Для тестов можно изменить `FINISH_REMINDER_MS` в `.env`.
+Файлы из чата сохраняются в `APP_DATA_DIR/uploads` и пересылаются менеджеру в Telegram. По умолчанию один файл ограничен 8 МБ через `MAX_UPLOAD_BYTES`.
 
 Временная публичная ссылка через Cloudflare Tunnel:
 

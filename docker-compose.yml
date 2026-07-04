@@ -16,8 +16,10 @@ services:
       - "127.0.0.1:4174:4174"
     volumes:
       - malina-dialogs:/var/lib/malina/data
+      - malina-uploads:/var/lib/malina/uploads
       - ./managers.json:/var/lib/malina/managers.json
       - ./pending-managers.json:/var/lib/malina/pending-managers.json
 
 volumes:
   malina-dialogs:
+  malina-uploads:

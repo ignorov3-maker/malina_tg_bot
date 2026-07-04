@@ -1,5 +1,6 @@
 .env
 data/
+uploads/
 managers.json
 pending-managers.json
 node_modules/

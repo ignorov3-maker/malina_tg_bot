@@ -1,4 +1,5 @@
 .env
+.git
 data/
 managers.json
 pending-managers.json

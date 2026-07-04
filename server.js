@@ -4,16 +4,20 @@ const path = require("node:path");
 const { URL } = require("node:url");
 
 const root = __dirname;
-const dataDir = path.join(root, "data");
-const managersPath = path.join(root, "managers.json");
-const pendingManagersPath = path.join(root, "pending-managers.json");
-const dialogsPath = path.join(dataDir, "leads.json");
 const envPath = path.join(root, ".env");
 
 loadDotEnv();
+
+const storageRoot = process.env.APP_DATA_DIR ? path.resolve(process.env.APP_DATA_DIR) : root;
+const dataDir = path.join(storageRoot, "data");
+const managersPath = path.join(storageRoot, "managers.json");
+const pendingManagersPath = path.join(storageRoot, "pending-managers.json");
+const dialogsPath = path.join(dataDir, "leads.json");
+
 ensureStorage();
 
 const port = Number(process.env.PORT || 4174);
+const host = process.env.HOST || "127.0.0.1";
 const botToken = process.env.TELEGRAM_BOT_TOKEN || "";
 const adminApproveToken = process.env.ADMIN_APPROVE_TOKEN || "";
 const botApi = botToken ? `https://api.telegram.org/bot${botToken}` : "";
@@ -78,8 +82,8 @@ const server = http.createServer(async (request, response) => {
   }
 });
 
-server.listen(port, "127.0.0.1", () => {
-  console.log(`Malina prototype is running: http://127.0.0.1:${port}/`);
+server.listen(port, host, () => {
+  console.log(`Malina prototype is running: http://${host}:${port}/`);
   console.log(`Telegram bot: ${botToken ? "configured" : "missing TELEGRAM_BOT_TOKEN"}`);
   console.log(`Managers configured: ${getManagers().length}`);
 
@@ -774,6 +778,7 @@ function readJson(request) {
 }
 
 function ensureStorage() {
+  if (!fs.existsSync(storageRoot)) fs.mkdirSync(storageRoot, { recursive: true });
   if (!fs.existsSync(dataDir)) fs.mkdirSync(dataDir);
   if (!fs.existsSync(dialogsPath)) writeDialogStore({ counter: 1044, leads: [] });
   if (!fs.existsSync(managersPath)) writeManagersStore({ managers: [] });

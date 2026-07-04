@@ -48,7 +48,10 @@
 
 ```env
 TELEGRAM_BOT_TOKEN=your_bot_token_here
+ADMIN_APPROVE_TOKEN=change_me_for_production
 PORT=4174
+HOST=127.0.0.1
+APP_DATA_DIR=.
 ```
 
 4. Запустите сервер:
@@ -119,6 +122,8 @@ Invoke-RestMethod "https://your-domain.ru/api/managers/approve" -Method Post -He
 - `script.js` - логика виджета на сайте.
 - `server.js` - HTTP API, хранение диалогов и Telegram polling.
 - `.env.example` - пример переменных окружения.
+- `render.yaml` - конфигурация для деплоя на Render.
+- `Dockerfile` - универсальная сборка для VPS и Docker-хостингов.
 - `managers.example.json` - пример списка менеджеров.
 - `start.ps1` - локальный запуск на Windows.
 - `data/leads.json` - локальное хранилище диалогов, не коммитится.
@@ -127,7 +132,35 @@ Invoke-RestMethod "https://your-domain.ru/api/managers/approve" -Method Post -He
 
 ## Деплой на сервер
 
-Минимальный вариант:
+### Вариант 1: Render
+
+Render подходит для быстрого запуска Node.js-сервиса с публичной HTTPS-ссылкой.
+
+1. Откройте Render Dashboard.
+2. Выберите **New +** -> **Blueprint**.
+3. Подключите GitHub-репозиторий `ignorov3-maker/malina_tg_bot`.
+4. Render прочитает `render.yaml`.
+5. Укажите секретные переменные:
+
+```env
+TELEGRAM_BOT_TOKEN=your_bot_token_here
+ADMIN_APPROVE_TOKEN=your_long_random_admin_token
+```
+
+6. Дождитесь сборки и запуска.
+7. Откройте выданный Render URL.
+8. Проверьте `/api/health`.
+
+В `render.yaml` уже указаны:
+
+- `HOST=0.0.0.0` - чтобы сайт был доступен извне;
+- `APP_DATA_DIR=/var/data` - чтобы менеджеры и диалоги хранились на постоянном диске;
+- persistent disk `malina-data` на 1 GB;
+- секреты через `sync: false`, чтобы они не попадали в GitHub.
+
+### Вариант 2: VPS + Docker
+
+Минимальные требования:
 
 - VPS на Ubuntu 22.04/24.04.
 - Node.js 20+.
@@ -135,6 +168,25 @@ Invoke-RestMethod "https://your-domain.ru/api/managers/approve" -Method Post -He
 - Один постоянно запущенный процесс Node.js через `pm2` или systemd.
 - Переменные окружения: `TELEGRAM_BOT_TOKEN`, `PORT`, `ADMIN_APPROVE_TOKEN`.
 - Папка `data/` должна сохраняться между перезапусками и деплоями.
+
+Пример запуска через Docker:
+
+```bash
+docker build -t malina-tg-bot .
+docker run -d \
+  --name malina-tg-bot \
+  --restart unless-stopped \
+  -p 4174:4174 \
+  -e TELEGRAM_BOT_TOKEN="your_bot_token_here" \
+  -e ADMIN_APPROVE_TOKEN="your_long_random_admin_token" \
+  -e HOST="0.0.0.0" \
+  -e PORT="4174" \
+  -e APP_DATA_DIR="/var/lib/malina" \
+  -v malina-data:/var/lib/malina \
+  malina-tg-bot
+```
+
+После этого Nginx должен проксировать домен на `http://127.0.0.1:4174`.
 
 Для продакшена лучше добавить:
 

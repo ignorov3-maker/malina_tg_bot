@@ -7,4 +7,8 @@ if (-not (Test-Path ".env")) {
   exit 1
 }
 
+$env:HOST = if ($env:HOST) { $env:HOST } else { "127.0.0.1" }
+$env:PORT = if ($env:PORT) { $env:PORT } else { "4174" }
+
+Write-Host "Запускаю проект: http://127.0.0.1:$env:PORT/" -ForegroundColor Green
 node server.js

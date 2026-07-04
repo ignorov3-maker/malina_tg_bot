@@ -5,3 +5,4 @@ pending-managers.json
 node_modules/
 practice_assignments/
 .storage/
+logs/

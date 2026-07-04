@@ -72,6 +72,30 @@ http://127.0.0.1:4174/
 .\start.ps1
 ```
 
+На Windows, если PowerShell блокирует запуск `.ps1`, используйте обычный CMD-файл:
+
+```cmd
+run-local.cmd
+```
+
+Для фонового запуска:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\start-background.ps1
+```
+
+Проверить статус:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\status-local.ps1
+```
+
+Остановить локальный сервер:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\stop-local.ps1
+```
+
 ## Как добавить менеджера
 
 1. Менеджер открывает Telegram-бота и отправляет `/start`.
@@ -125,7 +149,7 @@ Invoke-RestMethod "https://your-domain.ru/api/managers/approve" -Method Post -He
 - `render.yaml` - конфигурация для деплоя на Render.
 - `Dockerfile` - универсальная сборка для VPS и Docker-хостингов.
 - `managers.example.json` - пример списка менеджеров.
-- `start.ps1` - локальный запуск на Windows.
+- `start.ps1`, `run-local.cmd`, `start-background.ps1`, `status-local.ps1`, `stop-local.ps1` - локальный запуск на Windows.
 - `data/leads.json` - локальное хранилище диалогов, не коммитится.
 - `managers.json` - реальные менеджеры, не коммитятся.
 - `pending-managers.json` - ожидающие менеджеры, не коммитятся.

@@ -52,6 +52,7 @@ ADMIN_APPROVE_TOKEN=change_me_for_production
 PORT=4174
 HOST=127.0.0.1
 APP_DATA_DIR=.
+FINISH_REMINDER_MS=300000
 ```
 
 4. Запустите сервер:
@@ -117,6 +118,7 @@ docker compose down
 
 Если проект лежит в папке с кириллицей или пробелами и Docker Compose ругается на имя проекта, в `docker-compose.yml` уже задано явное имя `malina`.
 Контейнер использует локальные `managers.json` и `pending-managers.json`, а историю диалогов хранит в Docker volume `malina_malina-dialogs`.
+По умолчанию кнопка завершения диалога повторно отправляется менеджеру через 5 минут. Для тестов можно изменить `FINISH_REMINDER_MS` в `.env`.
 
 Временная публичная ссылка через Cloudflare Tunnel:
 
@@ -228,7 +230,7 @@ ADMIN_APPROVE_TOKEN=your_long_random_admin_token
 - Node.js 20+.
 - Домен и HTTPS через Nginx + Let's Encrypt.
 - Один постоянно запущенный процесс Node.js через `pm2` или systemd.
-- Переменные окружения: `TELEGRAM_BOT_TOKEN`, `PORT`, `ADMIN_APPROVE_TOKEN`.
+- Переменные окружения: `TELEGRAM_BOT_TOKEN`, `PORT`, `ADMIN_APPROVE_TOKEN`, `FINISH_REMINDER_MS`.
 - Папка `data/` должна сохраняться между перезапусками и деплоями.
 
 Пример запуска через Docker:

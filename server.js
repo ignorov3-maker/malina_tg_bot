@@ -20,6 +20,7 @@ const port = Number(process.env.PORT || 4174);
 const host = process.env.HOST || "127.0.0.1";
 const botToken = process.env.TELEGRAM_BOT_TOKEN || "";
 const adminApproveToken = process.env.ADMIN_APPROVE_TOKEN || "";
+const finishReminderMs = Number(process.env.FINISH_REMINDER_MS || 5 * 60 * 1000);
 const botApi = botToken ? `https://api.telegram.org/bot${botToken}` : "";
 const publicFiles = new Set(["/index.html", "/styles.css", "/script.js"]);
 const mimeTypes = {
@@ -89,6 +90,7 @@ server.listen(port, host, () => {
 
   if (botToken) {
     startTelegramPolling();
+    startFinishReminderLoop();
   }
 });
 
@@ -276,10 +278,11 @@ function queueDialog(dialog) {
 async function notifyAssignedManager(dialog, clientText, kind) {
   if (!botToken || !dialog.assignedManagerId) return 0;
 
-  const text = kind === "new"
-    ? formatNewDialogText(dialog)
-    : formatClientMessageText(dialog, clientText);
-  const sent = await sendManagerMessage(dialog, dialog.assignedManagerId, text).catch((error) => {
+  const isNewDialog = kind === "new";
+  const text = isNewDialog ? formatNewDialogText(dialog) : formatClientMessageText(dialog, clientText);
+  const sent = await sendManagerMessage(dialog, dialog.assignedManagerId, text, {
+    finishButton: isNewDialog
+  }).catch((error) => {
     console.error(`Telegram send failed for ${dialog.assignedManagerId}:`, error.message);
     return null;
   });
@@ -314,16 +317,28 @@ function formatClientMessageText(dialog, clientText) {
     `Клиент #${dialog.number}:`,
     clientText,
     "",
-    "Ответьте обычным сообщением. Завершить диалог можно кнопкой ниже или командой /done."
+    "Ответьте обычным сообщением. Завершить диалог можно командой /done."
   ].join("\n");
 }
 
-async function sendManagerMessage(dialog, managerId, text) {
-  const result = await telegram("sendMessage", {
+function formatFinishReminderText(dialog) {
+  return [
+    `Диалог с клиентом #${dialog.number} все еще открыт.`,
+    "",
+    "Если работа с клиентом завершена, нажмите кнопку ниже или отправьте /done.",
+    "Пока диалог открыт, новые клиенты вам не назначаются."
+  ].join("\n");
+}
+
+async function sendManagerMessage(dialog, managerId, text, options = {}) {
+  const payload = {
     chat_id: managerId,
     text,
-    disable_web_page_preview: true,
-    reply_markup: {
+    disable_web_page_preview: true
+  };
+
+  if (options.finishButton) {
+    payload.reply_markup = {
       inline_keyboard: [
         [
           {
@@ -332,14 +347,44 @@ async function sendManagerMessage(dialog, managerId, text) {
           }
         ]
       ]
-    }
-  });
+    };
+  }
+
+  const result = await telegram("sendMessage", payload);
 
   if (result?.ok) {
     rememberTelegramMessage(dialog.id, managerId, result.result.message_id);
+    if (options.finishButton) {
+      rememberFinishReminder(dialog.id);
+    }
   }
 
   return result;
+}
+
+function startFinishReminderLoop() {
+  setInterval(() => {
+    sendFinishReminders().catch((error) => {
+      console.error("Finish reminder failed:", error.message);
+    });
+  }, 60 * 1000);
+}
+
+async function sendFinishReminders() {
+  const store = readDialogStore();
+  const now = Date.now();
+  const dialogs = store.leads.filter((dialog) => dialog.status === "active" && dialog.assignedManagerId);
+
+  for (const dialog of dialogs) {
+    const lastReminderAt = Date.parse(dialog.lastFinishReminderAt || dialog.assignedAt || dialog.createdAt || "");
+    if (!lastReminderAt || now - lastReminderAt < finishReminderMs) continue;
+
+    await sendManagerMessage(dialog, dialog.assignedManagerId, formatFinishReminderText(dialog), {
+      finishButton: true
+    }).catch((error) => {
+      console.error(`Finish reminder send failed for ${dialog.assignedManagerId}:`, error.message);
+    });
+  }
 }
 
 async function startTelegramPolling() {
@@ -553,7 +598,7 @@ async function dispatchNextQueuedDialog(managerId) {
 
   assignDialog(nextDialog, managerId);
   writeDialogStore(store);
-  await sendManagerMessage(nextDialog, managerId, formatNewDialogText(nextDialog));
+  await sendManagerMessage(nextDialog, managerId, formatNewDialogText(nextDialog), { finishButton: true });
 }
 
 function getFreeManager(store = readDialogStore()) {
@@ -609,6 +654,16 @@ function rememberTelegramMessage(dialogId, chatId, messageId) {
 
   dialog.telegramMessages = dialog.telegramMessages || {};
   dialog.telegramMessages[`${chatId}:${messageId}`] = true;
+  writeDialogStore(store);
+}
+
+function rememberFinishReminder(dialogId) {
+  const store = readDialogStore();
+  const dialog = store.leads.find((item) => item.id === dialogId);
+  if (!dialog) return;
+
+  dialog.lastFinishReminderAt = nowIso();
+  dialog.updatedAt = dialog.updatedAt || dialog.lastFinishReminderAt;
   writeDialogStore(store);
 }
 
@@ -726,6 +781,7 @@ function normalizeDialog(dialog) {
     createdAt: dialog.createdAt || nowIso(),
     updatedAt: dialog.updatedAt || dialog.createdAt || nowIso(),
     lastClientAt: dialog.lastClientAt || "",
+    lastFinishReminderAt: dialog.lastFinishReminderAt || "",
     messages: dialog.messages || [],
     telegramMessages: dialog.telegramMessages || {}
   };

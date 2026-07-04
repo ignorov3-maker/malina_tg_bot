@@ -704,6 +704,29 @@ h1 {
   background: var(--red);
 }
 
+.chat-action {
+  display: flex;
+  justify-content: flex-start;
+}
+
+.chat-action button {
+  min-height: 42px;
+  padding: 0 14px;
+  color: white;
+  font-weight: 800;
+  background: var(--ink);
+  border: 0;
+  border-radius: 8px;
+  cursor: pointer;
+}
+
+.chat-action button:disabled,
+.chat-form button:disabled,
+.chat-form input:disabled {
+  cursor: not-allowed;
+  opacity: 0.58;
+}
+
 .choice-row {
   display: flex;
   flex-wrap: wrap;

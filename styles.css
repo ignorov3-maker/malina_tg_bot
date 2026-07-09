@@ -207,8 +207,7 @@ h1 {
 
 .primary-button,
 .secondary-button,
-.chat-form button,
-.reply-row button {
+.chat-form button {
   min-height: 52px;
   padding: 0 22px;
   border-radius: 8px;
@@ -216,8 +215,7 @@ h1 {
 }
 
 .primary-button,
-.chat-form button,
-.reply-row button {
+.chat-form button {
   color: white;
   background: var(--red);
   border: 0;
@@ -360,8 +358,7 @@ h1 {
 }
 
 .quick-quote,
-.section,
-.chat-preview {
+.section {
   margin: 0 clamp(18px, 5vw, 72px);
 }
 
@@ -392,8 +389,7 @@ h1 {
   max-width: 560px;
 }
 
-.section,
-.chat-preview {
+.section {
   padding: clamp(60px, 8vw, 110px) 0 0;
 }
 
@@ -410,8 +406,7 @@ h1 {
 }
 
 .product-grid,
-.case-grid,
-.timeline {
+.case-grid {
   display: grid;
   gap: 16px;
 }
@@ -420,9 +415,7 @@ h1 {
   grid-template-columns: repeat(4, minmax(0, 1fr));
 }
 
-.product-grid article,
-.operator-board,
-.timeline div {
+.product-grid article {
   background: var(--surface);
   border: 1px solid var(--line);
   border-radius: 8px;
@@ -453,8 +446,7 @@ h1 {
 }
 
 .product-grid p,
-.case-grid p,
-.timeline p {
+.case-grid p {
   color: var(--muted);
   line-height: 1.5;
 }
@@ -497,118 +489,6 @@ h1 {
 
 .case-light {
   background: var(--cream);
-}
-
-.timeline {
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-}
-
-.timeline div {
-  min-height: 180px;
-  padding: 22px;
-}
-
-.timeline strong {
-  display: grid;
-  width: 40px;
-  height: 40px;
-  margin-bottom: 24px;
-  place-items: center;
-  color: var(--red);
-  background: #fff0ed;
-  border-radius: 50%;
-}
-
-.operator-board {
-  display: grid;
-  grid-template-columns: 280px minmax(0, 1fr);
-  min-height: 430px;
-  overflow: hidden;
-  box-shadow: var(--shadow);
-}
-
-.operator-board aside {
-  padding: 14px;
-  background: #2b2729;
-}
-
-.dialog {
-  display: block;
-  width: 100%;
-  margin-bottom: 8px;
-  padding: 16px;
-  color: rgba(255, 255, 255, 0.72);
-  text-align: left;
-  background: transparent;
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  border-radius: 8px;
-  cursor: pointer;
-}
-
-.dialog.active {
-  color: white;
-  background: var(--red);
-}
-
-.dialog span,
-.dialog small {
-  display: block;
-}
-
-.dialog span {
-  margin-bottom: 5px;
-  font-weight: 800;
-}
-
-.operator-chat {
-  display: flex;
-  flex-direction: column;
-  gap: 14px;
-  padding: 28px;
-  background: #fbf8f5;
-}
-
-.manager-note {
-  width: fit-content;
-  padding: 9px 12px;
-  color: var(--green);
-  font-size: 13px;
-  font-weight: 800;
-  background: #eaf6ef;
-  border-radius: 999px;
-}
-
-.message {
-  max-width: 72%;
-  padding: 14px 16px;
-  line-height: 1.45;
-  border-radius: 8px;
-}
-
-.inbound {
-  background: white;
-  border: 1px solid var(--line);
-}
-
-.outbound {
-  align-self: flex-end;
-  color: white;
-  background: var(--red);
-}
-
-.reply-row {
-  display: flex;
-  gap: 10px;
-  margin-top: auto;
-}
-
-.reply-row input {
-  min-width: 0;
-  flex: 1;
-  min-height: 52px;
-  padding: 0 14px;
-  border: 1px solid var(--line);
-  border-radius: 8px;
 }
 
 .chat-widget {
@@ -811,9 +691,7 @@ h1 {
 
   .hero,
   .product-grid,
-  .case-grid,
-  .timeline,
-  .operator-board {
+  .case-grid {
     grid-template-columns: 1fr;
   }
 
@@ -832,12 +710,6 @@ h1 {
 
   .quote-steps {
     justify-content: flex-start;
-  }
-
-  .operator-board aside {
-    display: grid;
-    grid-template-columns: repeat(3, minmax(190px, 1fr));
-    overflow-x: auto;
   }
 }
 
@@ -904,8 +776,7 @@ h1 {
   }
 
   .quick-quote,
-  .section,
-  .chat-preview {
+  .section {
     margin-right: 16px;
     margin-left: 16px;
   }
@@ -915,17 +786,8 @@ h1 {
   }
 
   .product-grid article,
-  .case-card,
-  .operator-chat {
+  .case-card {
     padding: 20px;
-  }
-
-  .message {
-    max-width: 92%;
-  }
-
-  .reply-row {
-    flex-direction: column;
   }
 
   .chat-widget {

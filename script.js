@@ -13,6 +13,7 @@ const topicInput = document.querySelector("[data-client-topic]");
 
 const sessionKey = "malina-chat-session";
 const dialogKey = "malina-chat-dialog";
+const contactKey = "malina-chat-contact";
 const maxAttachmentBytes = 8 * 1024 * 1024;
 const sessionId =
   localStorage.getItem(sessionKey) ||
@@ -24,6 +25,24 @@ let activeDialogId = localStorage.getItem(dialogKey) || "";
 let renderedMessageIds = new Set();
 let pollTimer = null;
 let dialogClosed = false;
+
+const getSavedContact = () => {
+  try {
+    return JSON.parse(localStorage.getItem(contactKey) || "{}");
+  } catch {
+    return {};
+  }
+};
+
+const saveContact = (contact) => {
+  localStorage.setItem(contactKey, JSON.stringify(contact));
+};
+
+const clearSavedDialog = () => {
+  activeDialogId = "";
+  localStorage.removeItem(dialogKey);
+  localStorage.removeItem(contactKey);
+};
 
 const openChat = () => {
   widget.classList.add("is-open");
@@ -180,10 +199,9 @@ const botReply = (text) => {
 };
 
 const resetForNewDialog = () => {
-  activeDialogId = "";
   dialogClosed = false;
   renderedMessageIds = new Set();
-  localStorage.removeItem(dialogKey);
+  clearSavedDialog();
   setFormDisabled(false);
   setContactDisabled(false);
   nameInput.value = "";
@@ -197,8 +215,7 @@ const showDialogClosed = (data) => {
   if (dialogClosed) return;
 
   dialogClosed = true;
-  activeDialogId = "";
-  localStorage.removeItem(dialogKey);
+  clearSavedDialog();
   setFormDisabled(true);
   setContactDisabled(false);
 
@@ -325,6 +342,7 @@ form.addEventListener("submit", async (event) => {
     setFormDisabled(false);
     setContactDisabled(true);
     localStorage.setItem(dialogKey, activeDialogId);
+    saveContact(getContact());
     clearAttachment();
 
     if (previousDialogId !== activeDialogId) {
@@ -340,6 +358,14 @@ form.addEventListener("submit", async (event) => {
   }
 });
 
-if (activeDialogId) {
+const savedContact = getSavedContact();
+
+if (activeDialogId && savedContact.name && savedContact.email && savedContact.topic) {
+  nameInput.value = savedContact.name;
+  emailInput.value = savedContact.email;
+  topicInput.value = savedContact.topic;
   setContactDisabled(true);
+} else if (activeDialogId) {
+  clearSavedDialog();
+  setContactDisabled(false);
 }

@@ -143,19 +143,13 @@ powershell -ExecutionPolicy Bypass -File .\stop-online-tunnel.ps1
 1. Менеджер открывает Telegram-бота и отправляет `/start`.
 2. Бот отвечает его `chat_id`, именем и username.
 3. Сервер сохраняет кандидата в `pending-managers.json`.
-4. Одобрите менеджера через API:
+4. Откройте админку:
 
-```powershell
-$body = @{ id = "123456789"; name = "Александр" } | ConvertTo-Json
-Invoke-RestMethod "http://127.0.0.1:4174/api/managers/approve" -Method Post -ContentType "application/json" -Body $body
+```
+http://127.0.0.1:4174/admin
 ```
 
-Если на сервере задан `ADMIN_APPROVE_TOKEN`, передайте его в заголовке:
-
-```powershell
-$headers = @{ "x-admin-token" = "your_admin_token" }
-Invoke-RestMethod "https://your-domain.ru/api/managers/approve" -Method Post -Headers $headers -ContentType "application/json" -Body $body
-```
+5. Введите `ADMIN_APPROVE_TOKEN` из `.env`, нажмите "Сохранить" и одобрите кандидата.
 
 Реальный `managers.json` не коммитится в GitHub. Для примера есть `managers.example.json`.
 
@@ -164,8 +158,8 @@ Invoke-RestMethod "https://your-domain.ru/api/managers/approve" -Method Post -He
 - `GET /api/health` - состояние сервера, бота, менеджеров и очереди.
 - `POST /api/leads` - новое сообщение клиента или продолжение диалога.
 - `GET /api/leads/:id/messages` - история сообщений для сайта.
-- `GET /api/managers` - менеджеры и кандидаты.
-- `GET /api/managers/pending` - кандидаты после `/start`.
+- `GET /api/managers` - менеджеры и кандидаты, нужен `X-Admin-Token`.
+- `GET /api/managers/pending` - кандидаты после `/start`, нужен `X-Admin-Token`.
 - `POST /api/managers/approve` - одобрение менеджера.
 
 ## Проверка логики

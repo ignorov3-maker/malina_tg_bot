@@ -25,7 +25,7 @@ const finishReminderMs = Number(process.env.FINISH_REMINDER_MS || 5 * 60 * 1000)
 const maxUploadBytes = Number(process.env.MAX_UPLOAD_BYTES || 8 * 1024 * 1024);
 const maxRequestBytes = Number(process.env.MAX_REQUEST_BYTES || 12 * 1024 * 1024);
 const botApi = botToken ? `https://api.telegram.org/bot${botToken}` : "";
-const publicFiles = new Set(["/index.html", "/styles.css", "/script.js"]);
+const publicFiles = new Set(["/index.html", "/styles.css", "/script.js", "/admin.html", "/admin.js"]);
 const mimeTypes = {
   ".html": "text/html; charset=utf-8",
   ".css": "text/css; charset=utf-8",
@@ -61,6 +61,10 @@ const server = http.createServer(async (request, response) => {
     }
 
     if (request.method === "GET" && url.pathname === "/api/managers") {
+      if (!isAdminRequest(request)) {
+        return sendJson(response, 401, { ok: false, message: "Admin token is required" });
+      }
+
       return sendJson(response, 200, {
         managers: getManagers(),
         pending: readPendingManagers().pending
@@ -68,6 +72,10 @@ const server = http.createServer(async (request, response) => {
     }
 
     if (request.method === "GET" && url.pathname === "/api/managers/pending") {
+      if (!isAdminRequest(request)) {
+        return sendJson(response, 401, { ok: false, message: "Admin token is required" });
+      }
+
       return sendJson(response, 200, readPendingManagers());
     }
 
@@ -929,7 +937,7 @@ function normalizeDialog(dialog) {
 }
 
 function serveStatic(urlPath, response) {
-  const safePath = urlPath === "/" ? "/index.html" : decodeURIComponent(urlPath);
+  const safePath = urlPath === "/" ? "/index.html" : urlPath === "/admin" ? "/admin.html" : decodeURIComponent(urlPath);
 
   if (!publicFiles.has(safePath)) {
     return sendText(response, 404, "Not found");

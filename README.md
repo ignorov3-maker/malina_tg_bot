@@ -31,6 +31,7 @@
 - `id` - Telegram chat_id.
 - `name` - удобное имя.
 - `username` - username в Telegram.
+- `role` - `manager` или `admin`; админ также остается менеджером и может вести диалоги.
 - `enabled` - можно ли назначать менеджеру диалоги.
 
 **Message**
@@ -48,7 +49,6 @@
 
 ```env
 TELEGRAM_BOT_TOKEN=your_bot_token_here
-ADMIN_APPROVE_TOKEN=change_me_for_production
 PORT=4174
 HOST=127.0.0.1
 APP_DATA_DIR=.
@@ -140,16 +140,27 @@ powershell -ExecutionPolicy Bypass -File .\stop-online-tunnel.ps1
 
 ## Как добавить менеджера
 
-1. Менеджер открывает Telegram-бота и отправляет `/start`.
-2. Бот отвечает его `chat_id`, именем и username.
+1. В `managers.json` должен быть хотя бы один пользователь с `"role": "admin"`.
+2. Менеджер открывает Telegram-бота и отправляет `/start`.
 3. Сервер сохраняет кандидата в `pending-managers.json`.
-4. Откройте админку:
+4. Админ получает в Telegram уведомление с кнопкой "Одобрить менеджера".
+5. Админ может посмотреть кандидатов командой:
 
 ```
-http://127.0.0.1:4174/admin
+/pending
 ```
 
-5. Введите `ADMIN_APPROVE_TOKEN` из `.env`, нажмите "Сохранить" и одобрите кандидата.
+6. Одобрить вручную можно командой:
+
+```
+/approve 123456789
+```
+
+7. Список действующих менеджеров:
+
+```
+/managers
+```
 
 Реальный `managers.json` не коммитится в GitHub. Для примера есть `managers.example.json`.
 
@@ -158,9 +169,6 @@ http://127.0.0.1:4174/admin
 - `GET /api/health` - состояние сервера, бота, менеджеров и очереди.
 - `POST /api/leads` - новое сообщение клиента или продолжение диалога.
 - `GET /api/leads/:id/messages` - история сообщений для сайта.
-- `GET /api/managers` - менеджеры и кандидаты, нужен `X-Admin-Token`.
-- `GET /api/managers/pending` - кандидаты после `/start`, нужен `X-Admin-Token`.
-- `POST /api/managers/approve` - одобрение менеджера.
 
 ## Проверка логики
 
@@ -205,7 +213,6 @@ Render подходит для быстрого запуска Node.js-серв�
 
 ```env
 TELEGRAM_BOT_TOKEN=your_bot_token_here
-ADMIN_APPROVE_TOKEN=your_long_random_admin_token
 ```
 
 6. Дождитесь сборки и запуска.
@@ -227,7 +234,7 @@ ADMIN_APPROVE_TOKEN=your_long_random_admin_token
 - Node.js 20+.
 - Домен и HTTPS через Nginx + Let's Encrypt.
 - Один постоянно запущенный процесс Node.js через `pm2` или systemd.
-- Переменные окружения: `TELEGRAM_BOT_TOKEN`, `PORT`, `ADMIN_APPROVE_TOKEN`, `FINISH_REMINDER_MS`.
+- Переменные окружения: `TELEGRAM_BOT_TOKEN`, `PORT`, `FINISH_REMINDER_MS`.
 - Папка `data/` должна сохраняться между перезапусками и деплоями.
 
 Пример запуска через Docker:
@@ -239,7 +246,6 @@ docker run -d \
   --restart unless-stopped \
   -p 4174:4174 \
   -e TELEGRAM_BOT_TOKEN="your_bot_token_here" \
-  -e ADMIN_APPROVE_TOKEN="your_long_random_admin_token" \
   -e HOST="0.0.0.0" \
   -e PORT="4174" \
   -e APP_DATA_DIR="/var/lib/malina" \
@@ -252,7 +258,7 @@ docker run -d \
 Для продакшена лучше добавить:
 
 - SQLite или PostgreSQL вместо JSON-файла.
-- Авторизацию для административных API.
+- Отдельную панель мониторинга для истории диалогов, если понадобится.
 - Загрузку файлов и макетов.
 - Webhook Telegram вместо long polling.
 - Логи ошибок и резервные копии данных.

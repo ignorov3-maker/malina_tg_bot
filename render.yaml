@@ -14,8 +14,6 @@ services:
         value: /var/data
       - key: TELEGRAM_BOT_TOKEN
         sync: false
-      - key: ADMIN_APPROVE_TOKEN
-        sync: false
     disk:
       name: malina-data
       mountPath: /var/data

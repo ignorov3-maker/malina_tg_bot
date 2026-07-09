@@ -20,12 +20,11 @@ ensureStorage();
 const port = Number(process.env.PORT || 4174);
 const host = process.env.HOST || "127.0.0.1";
 const botToken = process.env.TELEGRAM_BOT_TOKEN || "";
-const adminApproveToken = process.env.ADMIN_APPROVE_TOKEN || "";
 const finishReminderMs = Number(process.env.FINISH_REMINDER_MS || 5 * 60 * 1000);
 const maxUploadBytes = Number(process.env.MAX_UPLOAD_BYTES || 8 * 1024 * 1024);
 const maxRequestBytes = Number(process.env.MAX_REQUEST_BYTES || 12 * 1024 * 1024);
 const botApi = botToken ? `https://api.telegram.org/bot${botToken}` : "";
-const publicFiles = new Set(["/index.html", "/styles.css", "/script.js", "/admin.html", "/admin.js"]);
+const publicFiles = new Set(["/index.html", "/styles.css", "/script.js"]);
 const mimeTypes = {
   ".html": "text/html; charset=utf-8",
   ".css": "text/css; charset=utf-8",
@@ -58,29 +57,6 @@ const server = http.createServer(async (request, response) => {
     const messagesMatch = url.pathname.match(/^\/api\/leads\/([^/]+)\/messages$/);
     if (request.method === "GET" && messagesMatch) {
       return handleDialogMessages(response, messagesMatch[1]);
-    }
-
-    if (request.method === "GET" && url.pathname === "/api/managers") {
-      if (!isAdminRequest(request)) {
-        return sendJson(response, 401, { ok: false, message: "Admin token is required" });
-      }
-
-      return sendJson(response, 200, {
-        managers: getManagers(),
-        pending: readPendingManagers().pending
-      });
-    }
-
-    if (request.method === "GET" && url.pathname === "/api/managers/pending") {
-      if (!isAdminRequest(request)) {
-        return sendJson(response, 401, { ok: false, message: "Admin token is required" });
-      }
-
-      return sendJson(response, 200, readPendingManagers());
-    }
-
-    if (request.method === "POST" && url.pathname === "/api/managers/approve") {
-      return handleApproveManager(request, response);
     }
 
     if (request.method === "GET") {
@@ -224,43 +200,6 @@ function handleDialogMessages(response, dialogId) {
     assignedManagerId: dialog.assignedManagerId || "",
     messages: dialog.messages
   });
-}
-
-async function handleApproveManager(request, response) {
-  if (!isAdminRequest(request)) {
-    return sendJson(response, 401, { ok: false, message: "Admin token is required" });
-  }
-
-  const payload = await readJson(request);
-  const id = cleanText(payload.id || "");
-  const pendingStore = readPendingManagers();
-  const pendingManager = pendingStore.pending.find((manager) => String(manager.id) === id);
-  const name = cleanText(payload.name || pendingManager?.name || pendingManager?.username || "Менеджер");
-  const username = cleanText(payload.username || pendingManager?.username || "");
-
-  if (!id) {
-    return sendJson(response, 400, { ok: false, message: "Нужно передать id" });
-  }
-
-  const managerStore = readManagersStore();
-  const exists = managerStore.managers.some((manager) => String(manager.id) === id);
-
-  if (!exists) {
-    managerStore.managers.push({ id, name, username, enabled: true });
-    writeManagersStore(managerStore);
-  }
-
-  pendingStore.pending = pendingStore.pending.filter((manager) => String(manager.id) !== id);
-  writePendingManagers(pendingStore);
-
-  if (botToken) {
-    await telegram("sendMessage", {
-      chat_id: id,
-      text: "Готово, вы добавлены как менеджер. Когда появится свободный диалог, я пришлю его сюда."
-    }).catch((error) => console.error("Approve notification failed:", error.message));
-  }
-
-  return sendJson(response, 200, { ok: true, managers: managerStore.managers.length });
 }
 
 function getOrCreateOpenDialog(store, options) {
@@ -554,8 +493,16 @@ async function handleTelegramUpdate(update) {
   if (!isManager(chatId)) {
     await telegram("sendMessage", {
       chat_id: chatId,
-      text: `Вы пока не добавлены как менеджер. Ваш chat_id: ${chatId}`
+      text: [
+        `Вы пока не добавлены как менеджер. Ваш chat_id: ${chatId}`,
+        "Я отправила заявку администраторам. Когда вас одобрят, бот пришлет уведомление."
+      ].join("\n")
     });
+    return;
+  }
+
+  if (isAdmin(chatId) && (text === "/pending" || text === "/managers" || text.startsWith("/approve"))) {
+    await handleAdminCommand(chatId, text);
     return;
   }
 
@@ -588,17 +535,22 @@ async function handleManagerStart(message, chatId) {
   const displayName = [user.first_name, user.last_name].filter(Boolean).join(" ") || "Менеджер";
   const username = user.username || "";
   const alreadyManager = isManager(chatId);
+  const alreadyAdmin = isAdmin(chatId);
+  const candidate = {
+    id: chatId,
+    name: displayName,
+    username,
+    requestedAt: nowIso()
+  };
 
   if (!alreadyManager) {
-    rememberPendingManager({
-      id: chatId,
-      name: displayName,
-      username,
-      requestedAt: nowIso()
-    });
+    const created = rememberPendingManager(candidate);
+    if (created) {
+      await notifyAdminsAboutPendingManager(candidate);
+    }
   }
 
-  const managerJson = JSON.stringify({ id: chatId, name: displayName, username }, null, 2);
+  const managerJson = JSON.stringify({ id: chatId, name: displayName, username, role: "manager", enabled: true }, null, 2);
 
   await telegram("sendMessage", {
     chat_id: chatId,
@@ -606,25 +558,212 @@ async function handleManagerStart(message, chatId) {
       `Ваш Telegram chat_id: ${chatId}`,
       `Имя: ${displayName}`,
       username ? `Username: @${username}` : "Username: не указан",
-      alreadyManager ? "Статус: вы уже добавлены как менеджер." : "Статус: ожидает одобрения.",
+      alreadyAdmin ? "Роль: админ и менеджер." : alreadyManager ? "Статус: вы уже добавлены как менеджер." : "Статус: ожидает одобрения админом.",
       "",
+      alreadyAdmin ? "Админ-команды: /pending, /managers, /approve chat_id" : "",
       "Готовый блок для managers.json:",
       managerJson
     ].join("\n")
   });
+
+  if (alreadyAdmin) {
+    await sendPendingManagersList(chatId);
+  }
 }
 
 async function handleTelegramCallback(callback) {
   const chatId = String(callback.message?.chat?.id || callback.from?.id || "");
   const data = callback.data || "";
 
-  if (!chatId || !data.startsWith("done:")) return;
+  if (!chatId) return;
+
+  if (data.startsWith("approve:")) {
+    if (!isAdmin(chatId)) {
+      await telegram("answerCallbackQuery", {
+        callback_query_id: callback.id,
+        text: "Недостаточно прав"
+      }).catch(() => {});
+      return;
+    }
+
+    const result = await approvePendingManager(data.slice("approve:".length));
+    await telegram("answerCallbackQuery", {
+      callback_query_id: callback.id,
+      text: result.approved ? "Менеджер одобрен" : "Кандидат уже обработан"
+    }).catch(() => {});
+    await telegram("sendMessage", {
+      chat_id: chatId,
+      text: result.message
+    }).catch(() => {});
+    return;
+  }
+
+  if (!data.startsWith("done:")) return;
 
   await finishDialog(data.slice("done:".length), chatId);
   await telegram("answerCallbackQuery", {
     callback_query_id: callback.id,
     text: "Диалог завершен"
   }).catch(() => {});
+}
+
+async function handleAdminCommand(chatId, text) {
+  if (text === "/pending") {
+    await sendPendingManagersList(chatId);
+    return;
+  }
+
+  if (text === "/managers") {
+    await sendManagersList(chatId);
+    return;
+  }
+
+  if (text.startsWith("/approve")) {
+    const id = cleanText(text.replace("/approve", ""));
+    if (!id) {
+      await telegram("sendMessage", {
+        chat_id: chatId,
+        text: "Укажите chat_id: /approve 123456789"
+      });
+      return;
+    }
+
+    const result = await approvePendingManager(id);
+    await telegram("sendMessage", { chat_id: chatId, text: result.message });
+  }
+}
+
+async function sendPendingManagersList(chatId) {
+  const pending = readPendingManagers().pending || [];
+
+  if (!pending.length) {
+    await telegram("sendMessage", {
+      chat_id: chatId,
+      text: "Ожидающих менеджеров нет."
+    });
+    return;
+  }
+
+  for (const manager of pending) {
+    await telegram("sendMessage", {
+      chat_id: chatId,
+      text: formatPendingManagerText(manager),
+      reply_markup: {
+        inline_keyboard: [
+          [
+            {
+              text: "Одобрить менеджера",
+              callback_data: `approve:${manager.id}`
+            }
+          ]
+        ]
+      }
+    });
+  }
+}
+
+async function sendManagersList(chatId) {
+  const managers = getManagers();
+
+  if (!managers.length) {
+    await telegram("sendMessage", {
+      chat_id: chatId,
+      text: "Менеджеров пока нет."
+    });
+    return;
+  }
+
+  await telegram("sendMessage", {
+    chat_id: chatId,
+    text: [
+      "Менеджеры:",
+      "",
+      ...managers.map((manager) => {
+        const role = manager.role === "admin" ? "админ + менеджер" : "менеджер";
+        return `${formatManagerName(manager)}\nID: ${manager.id}\nРоль: ${role}`;
+      })
+    ].join("\n\n")
+  });
+}
+
+async function notifyAdminsAboutPendingManager(candidate) {
+  const admins = getAdmins();
+
+  for (const admin of admins) {
+    await telegram("sendMessage", {
+      chat_id: admin.id,
+      text: formatPendingManagerText(candidate),
+      reply_markup: {
+        inline_keyboard: [
+          [
+            {
+              text: "Одобрить менеджера",
+              callback_data: `approve:${candidate.id}`
+            }
+          ]
+        ]
+      }
+    }).catch((error) => {
+      console.error(`Admin notification failed for ${admin.id}:`, error.message);
+    });
+  }
+}
+
+function formatPendingManagerText(manager) {
+  return [
+    "Новый кандидат в менеджеры",
+    "",
+    `Имя: ${manager.name || "не указано"}`,
+    manager.username ? `Username: @${manager.username}` : "Username: не указан",
+    `chat_id: ${manager.id}`,
+    manager.requestedAt ? `Заявка: ${manager.requestedAt}` : "",
+    "",
+    "Нажмите кнопку ниже или отправьте:",
+    `/approve ${manager.id}`
+  ].filter(Boolean).join("\n");
+}
+
+async function approvePendingManager(id) {
+  const cleanId = cleanText(id || "");
+  const pendingStore = readPendingManagers();
+  const pendingManager = pendingStore.pending.find((manager) => String(manager.id) === cleanId);
+
+  if (!cleanId) {
+    return { approved: false, message: "Нужно указать chat_id кандидата." };
+  }
+
+  if (!pendingManager && isManager(cleanId)) {
+    return { approved: false, message: `ID ${cleanId} уже добавлен как менеджер.` };
+  }
+
+  if (!pendingManager) {
+    return { approved: false, message: `Кандидат ${cleanId} не найден в ожидании.` };
+  }
+
+  const managerStore = readManagersStore();
+  const exists = managerStore.managers.some((manager) => String(manager.id) === cleanId);
+  const name = cleanText(pendingManager.name || pendingManager.username || "Менеджер");
+  const username = cleanText(pendingManager.username || "");
+
+  if (!exists) {
+    managerStore.managers.push({ id: cleanId, name, username, role: "manager", enabled: true });
+    writeManagersStore(managerStore);
+  }
+
+  pendingStore.pending = pendingStore.pending.filter((manager) => String(manager.id) !== cleanId);
+  writePendingManagers(pendingStore);
+
+  if (botToken) {
+    await telegram("sendMessage", {
+      chat_id: cleanId,
+      text: "Готово, вы добавлены как менеджер. Когда появится свободный диалог, я пришлю его сюда."
+    }).catch((error) => console.error("Approve notification failed:", error.message));
+  }
+
+  return {
+    approved: true,
+    message: `${formatManagerName({ id: cleanId, name, username })} добавлен как менеджер.`
+  };
 }
 
 async function addManagerMessage(dialogId, managerId, text) {
@@ -835,9 +974,14 @@ function getManagers() {
       id: String(manager.id).trim(),
       name: manager.name || "",
       username: manager.username || "",
+      role: manager.role === "admin" || manager.admin === true ? "admin" : "manager",
       enabled: manager.enabled !== false
     }))
     .filter((manager) => manager.id && manager.enabled);
+}
+
+function getAdmins() {
+  return getManagers().filter((manager) => manager.role === "admin");
 }
 
 function getManagerById(id) {
@@ -855,12 +999,8 @@ function isManager(chatId) {
   return getManagers().some((manager) => String(manager.id) === String(chatId));
 }
 
-function isAdminRequest(request) {
-  if (!adminApproveToken) return true;
-
-  const url = new URL(request.url, `http://${request.headers.host}`);
-  return request.headers["x-admin-token"] === adminApproveToken ||
-    url.searchParams.get("token") === adminApproveToken;
+function isAdmin(chatId) {
+  return getAdmins().some((manager) => String(manager.id) === String(chatId));
 }
 
 function readManagersStore() {
@@ -894,7 +1034,10 @@ function rememberPendingManager(candidate) {
   if (!exists) {
     store.pending.push(candidate);
     writePendingManagers(store);
+    return true;
   }
+
+  return false;
 }
 
 function readDialogStore() {
@@ -937,7 +1080,7 @@ function normalizeDialog(dialog) {
 }
 
 function serveStatic(urlPath, response) {
-  const safePath = urlPath === "/" ? "/index.html" : urlPath === "/admin" ? "/admin.html" : decodeURIComponent(urlPath);
+  const safePath = urlPath === "/" ? "/index.html" : decodeURIComponent(urlPath);
 
   if (!publicFiles.has(safePath)) {
     return sendText(response, 404, "Not found");

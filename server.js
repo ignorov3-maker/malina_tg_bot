@@ -2,6 +2,8 @@ const http = require("node:http");
 const fs = require("node:fs");
 const path = require("node:path");
 const { URL } = require("node:url");
+const { createClientDialogStatus } = require("./src/client-dialog-status");
+const { createPostgresDialogRepository } = require("./src/postgres-dialog-repository");
 
 const root = __dirname;
 const envPath = path.join(root, ".env");
@@ -24,6 +26,11 @@ const finishReminderMs = Number(process.env.FINISH_REMINDER_MS || 5 * 60 * 1000)
 const maxUploadBytes = Number(process.env.MAX_UPLOAD_BYTES || 8 * 1024 * 1024);
 const maxRequestBytes = Number(process.env.MAX_REQUEST_BYTES || 12 * 1024 * 1024);
 const botApi = botToken ? `https://api.telegram.org/bot${botToken}` : "";
+const databaseUrl = process.env.DATABASE_URL || "";
+const databaseRequired = process.env.DATABASE_REQUIRED === "true";
+const databaseSsl = process.env.DATABASE_SSL === "true";
+const databaseSslRejectUnauthorized = process.env.DATABASE_SSL_REJECT_UNAUTHORIZED !== "false";
+const databasePoolSize = Number(process.env.DATABASE_POOL_SIZE || 10);
 const publicFiles = new Set(["/index.html", "/styles.css", "/script.js"]);
 const mimeTypes = {
   ".html": "text/html; charset=utf-8",
@@ -33,6 +40,11 @@ const mimeTypes = {
 };
 
 let telegramOffset = 0;
+let dialogStoreCache = readDialogStoreFromJson();
+let dialogRepository = null;
+let dialogStoreWriteQueue = Promise.resolve();
+let dialogStorage = "json";
+let dialogStorageHealthy = true;
 
 const server = http.createServer(async (request, response) => {
   try {
@@ -40,8 +52,20 @@ const server = http.createServer(async (request, response) => {
 
     if (request.method === "GET" && url.pathname === "/api/health") {
       const store = readDialogStore();
+
+      if (dialogRepository) {
+        try {
+          await dialogRepository.ping();
+          dialogStorageHealthy = true;
+        } catch {
+          dialogStorageHealthy = false;
+        }
+      }
+
       return sendJson(response, 200, {
         ok: true,
+        storage: dialogStorage,
+        storageHealthy: dialogStorageHealthy,
         botConfigured: Boolean(botToken),
         managers: getManagers().length,
         pendingManagers: readPendingManagers().pending.length,
@@ -52,6 +76,11 @@ const server = http.createServer(async (request, response) => {
 
     if (request.method === "POST" && url.pathname === "/api/leads") {
       return handleClientMessage(request, response);
+    }
+
+    const statusMatch = url.pathname.match(/^\/api\/leads\/([^/]+)\/status$/);
+    if (request.method === "GET" && statusMatch) {
+      return handleDialogStatus(response, statusMatch[1]);
     }
 
     const messagesMatch = url.pathname.match(/^\/api\/leads\/([^/]+)\/messages$/);
@@ -73,16 +102,26 @@ const server = http.createServer(async (request, response) => {
   }
 });
 
-server.listen(port, host, () => {
-  console.log(`Malina prototype is running: http://${host}:${port}/`);
-  console.log(`Telegram bot: ${botToken ? "configured" : "missing TELEGRAM_BOT_TOKEN"}`);
-  console.log(`Managers configured: ${getManagers().length}`);
-
-  if (botToken) {
-    startTelegramPolling();
-    startFinishReminderLoop();
-  }
+startServer().catch((error) => {
+  console.error("Server startup failed:", error);
+  process.exitCode = 1;
 });
+
+async function startServer() {
+  await initializeDialogStorage();
+
+  server.listen(port, host, () => {
+    console.log(`Malina prototype is running: http://${host}:${port}/`);
+    console.log(`Dialog storage: ${dialogStorage}`);
+    console.log(`Telegram bot: ${botToken ? "configured" : "missing TELEGRAM_BOT_TOKEN"}`);
+    console.log(`Managers configured: ${getManagers().length}`);
+
+    if (botToken) {
+      startTelegramPolling();
+      startFinishReminderLoop();
+    }
+  });
+}
 
 async function handleClientMessage(request, response) {
   const payload = await readJson(request);
@@ -139,18 +178,18 @@ async function handleClientMessage(request, response) {
   let sentToManagers = 0;
 
   if (dialog.status === "active" && dialog.assignedManagerId) {
-    writeDialogStore(store);
+    await writeDialogStore(store);
     sentToManagers = await notifyAssignedManager(dialog, text, result.isNew ? "new" : "continuation", attachments);
     event = result.isNew ? "dialog_started" : "message_delivered";
   } else if (dialog.status === "queued") {
-    writeDialogStore(store);
+    await writeDialogStore(store);
     event = result.isNew ? "queued" : "queued_updated";
   } else {
     const manager = botToken ? getFreeManager(store) : null;
 
     if (manager) {
       assignDialog(dialog, manager.id);
-      writeDialogStore(store);
+      await writeDialogStore(store);
       sentToManagers = await notifyAssignedManager(dialog, text, "new", attachments);
 
       if (sentToManagers > 0) {
@@ -159,12 +198,12 @@ async function handleClientMessage(request, response) {
         queueDialog(dialog);
         dialog.assignedManagerId = "";
         dialog.assignedAt = "";
-        writeDialogStore(store);
+        await writeDialogStore(store);
         event = "queued";
       }
     } else {
       queueDialog(dialog);
-      writeDialogStore(store);
+      await writeDialogStore(store);
       event = !botToken || getManagers().length === 0 ? "no_managers" : "queued";
     }
   }
@@ -178,6 +217,20 @@ async function handleClientMessage(request, response) {
     assignedManagerId: dialog.assignedManagerId || "",
     sentToManagers,
     event
+  });
+}
+
+function handleDialogStatus(response, dialogId) {
+  const store = readDialogStore();
+  const dialog = store.leads.find((item) => item.id === decodeURIComponent(dialogId));
+
+  if (!dialog) {
+    return sendJson(response, 404, { ok: false, message: "Диалог не найден" });
+  }
+
+  return sendJson(response, 200, {
+    ok: true,
+    ...createClientDialogStatus(dialog, store.leads)
   });
 }
 
@@ -393,9 +446,9 @@ async function sendManagerMessage(dialog, managerId, text, options = {}) {
   const result = await telegram("sendMessage", payload);
 
   if (result?.ok) {
-    rememberTelegramMessage(dialog.id, managerId, result.result.message_id);
+    await rememberTelegramMessage(dialog.id, managerId, result.result.message_id);
     if (options.finishButton) {
-      rememberFinishReminder(dialog.id);
+      await rememberFinishReminder(dialog.id);
     }
   }
 
@@ -418,7 +471,7 @@ async function sendManagerDocument(dialog, managerId, attachment) {
   const result = await telegramForm("sendDocument", form);
 
   if (result?.ok) {
-    rememberTelegramMessage(dialog.id, managerId, result.result.message_id);
+    await rememberTelegramMessage(dialog.id, managerId, result.result.message_id);
   }
 
   return result;
@@ -791,7 +844,7 @@ async function addManagerMessage(dialogId, managerId, text) {
   dialog.messages.push(createMessage("manager", text, { managerChatId: managerId }));
   dialog.status = "active";
   dialog.updatedAt = nowIso();
-  writeDialogStore(store);
+  await writeDialogStore(store);
 }
 
 async function finishActiveDialog(managerId) {
@@ -834,7 +887,7 @@ async function finishDialog(dialogId, managerId) {
   dialog.closedAt = nowIso();
   dialog.updatedAt = dialog.closedAt;
   dialog.messages.push(createMessage("system", "Диалог завершен менеджером."));
-  writeDialogStore(store);
+  await writeDialogStore(store);
 
   await telegram("sendMessage", {
     chat_id: managerId,
@@ -859,7 +912,7 @@ async function dispatchNextQueuedDialog(managerId) {
   }
 
   assignDialog(nextDialog, managerId);
-  writeDialogStore(store);
+  await writeDialogStore(store);
   await notifyAssignedManager(nextDialog, "", "new", getClientAttachments(nextDialog));
 }
 
@@ -933,24 +986,24 @@ async function telegramForm(method, form) {
   return data;
 }
 
-function rememberTelegramMessage(dialogId, chatId, messageId) {
+async function rememberTelegramMessage(dialogId, chatId, messageId) {
   const store = readDialogStore();
   const dialog = store.leads.find((item) => item.id === dialogId);
   if (!dialog) return;
 
   dialog.telegramMessages = dialog.telegramMessages || {};
   dialog.telegramMessages[`${chatId}:${messageId}`] = true;
-  writeDialogStore(store);
+  await writeDialogStore(store);
 }
 
-function rememberFinishReminder(dialogId) {
+async function rememberFinishReminder(dialogId) {
   const store = readDialogStore();
   const dialog = store.leads.find((item) => item.id === dialogId);
   if (!dialog) return;
 
   dialog.lastFinishReminderAt = nowIso();
   dialog.updatedAt = dialog.updatedAt || dialog.lastFinishReminderAt;
-  writeDialogStore(store);
+  await writeDialogStore(store);
 }
 
 function getDialogIdByTelegramMessage(chatId, messageId) {
@@ -1041,6 +1094,10 @@ function rememberPendingManager(candidate) {
 }
 
 function readDialogStore() {
+  return dialogStoreCache;
+}
+
+function readDialogStoreFromJson() {
   try {
     const store = JSON.parse(fs.readFileSync(dialogsPath, "utf8"));
     store.counter = Number(store.counter || 1044);
@@ -1052,7 +1109,77 @@ function readDialogStore() {
 }
 
 function writeDialogStore(store) {
-  fs.writeFileSync(dialogsPath, `${JSON.stringify(store, null, 2)}\n`, "utf8");
+  dialogStoreCache = store;
+
+  if (!dialogRepository) {
+    fs.writeFileSync(dialogsPath, `${JSON.stringify(store, null, 2)}\n`, "utf8");
+    dialogStorageHealthy = true;
+    return Promise.resolve();
+  }
+
+  const snapshot = JSON.parse(JSON.stringify(store));
+  dialogStoreWriteQueue = dialogStoreWriteQueue
+    .catch(() => undefined)
+    .then(() => dialogRepository.saveStore(snapshot))
+    .then(() => {
+      dialogStorageHealthy = true;
+    })
+    .catch((error) => {
+      dialogStorageHealthy = false;
+      console.error("PostgreSQL dialog save failed:", error.message);
+      throw error;
+    });
+
+  return dialogStoreWriteQueue;
+}
+
+async function initializeDialogStorage() {
+  if (!databaseUrl) {
+    dialogStorage = "json";
+    dialogStorageHealthy = true;
+    return;
+  }
+
+  let repository = null;
+
+  try {
+    repository = createPostgresDialogRepository({
+      connectionString: databaseUrl,
+      poolSize: databasePoolSize,
+      ssl: databaseSsl,
+      rejectUnauthorized: databaseSslRejectUnauthorized
+    });
+    await repository.initialize();
+    const databaseStore = await repository.loadStore();
+    const jsonStore = readDialogStoreFromJson();
+
+    dialogRepository = repository;
+    dialogStorage = "postgresql";
+    dialogStorageHealthy = true;
+
+    if (databaseStore.leads.length === 0 && jsonStore.leads.length > 0) {
+      await repository.saveStore(jsonStore);
+      dialogStoreCache = await repository.loadStore();
+      console.log(`Imported ${jsonStore.leads.length} dialogs from data/leads.json into PostgreSQL.`);
+    } else {
+      dialogStoreCache = databaseStore;
+    }
+  } catch (error) {
+    dialogStorageHealthy = false;
+
+    if (repository) {
+      await repository.close().catch(() => undefined);
+    }
+
+    if (databaseRequired) {
+      throw error;
+    }
+
+    dialogRepository = null;
+    dialogStorage = "json";
+    dialogStoreCache = readDialogStoreFromJson();
+    console.warn(`PostgreSQL is unavailable; using JSON fallback: ${error.message}`);
+  }
 }
 
 function normalizeDialog(dialog) {
@@ -1129,7 +1256,9 @@ function ensureStorage() {
   if (!fs.existsSync(storageRoot)) fs.mkdirSync(storageRoot, { recursive: true });
   if (!fs.existsSync(dataDir)) fs.mkdirSync(dataDir);
   if (!fs.existsSync(uploadsDir)) fs.mkdirSync(uploadsDir);
-  if (!fs.existsSync(dialogsPath)) writeDialogStore({ counter: 1044, leads: [] });
+  if (!fs.existsSync(dialogsPath)) {
+    fs.writeFileSync(dialogsPath, `${JSON.stringify({ counter: 1044, leads: [] }, null, 2)}\n`, "utf8");
+  }
   if (!fs.existsSync(managersPath)) writeManagersStore({ managers: [] });
   if (!fs.existsSync(pendingManagersPath)) writePendingManagers({ pending: [] });
 }

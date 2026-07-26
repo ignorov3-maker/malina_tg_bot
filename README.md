@@ -13,7 +13,20 @@
 - Менеджер завершает диалог кнопкой "Завершить диалог" или командой `/done`.
 - После завершения менеджеру автоматически назначается следующий клиент из очереди.
 
+## Архитектура
+
+- **Серверная часть сайта** — HTTP API, проверка запросов, модель и хранение диалогов, история сообщений, health-check и безопасный клиентский статус обращения.
+- **Telegram-интеграция и диспетчеризация** — регистрация менеджеров, выбор свободного сотрудника, FIFO-очередь, ответы и завершение диалогов.
+
+Подробная граница ответственности и контракт между модулями приведены в [ARCHITECTURE.md](ARCHITECTURE.md).
+
 ## Сущности
+
+**Client**
+
+- `id` - стабильный технический идентификатор клиента.
+- `sessionId` - браузерная сессия, по которой продолжается открытый диалог.
+- `name`, `email` - контактные данные клиента.
 
 **Dialog**
 
@@ -52,14 +65,20 @@ TELEGRAM_BOT_TOKEN=your_bot_token_here
 PORT=4174
 HOST=127.0.0.1
 APP_DATA_DIR=.
+DATABASE_URL=postgresql://malina:malina@127.0.0.1:5432/malina
+DATABASE_REQUIRED=false
+DATABASE_SSL=false
+DATABASE_SSL_REJECT_UNAUTHORIZED=true
+DATABASE_POOL_SIZE=10
 FINISH_REMINDER_MS=300000
 MAX_UPLOAD_BYTES=8388608
 MAX_REQUEST_BYTES=12582912
 ```
 
-4. Запустите сервер:
+4. Установите зависимости и запустите сервер:
 
 ```powershell
+npm install
 node server.js
 ```
 
@@ -118,8 +137,18 @@ Invoke-RestMethod http://127.0.0.1:4174/api/health
 docker compose down
 ```
 
+Docker Compose поднимает приложение и PostgreSQL, ждет готовности базы и только затем запускает сервер. Клиенты, диалоги и сообщения хранятся в volume `malina_malina-postgres`, загруженные файлы - в `malina_malina-uploads`, а менеджеры остаются в `managers.json` и `pending-managers.json`.
+
+При заданном `DATABASE_URL` сервер автоматически создает таблицы из `db/schema.sql`. Если база пустая, существующие диалоги из `data/leads.json` импортируются один раз. При `DATABASE_REQUIRED=true` ошибка подключения останавливает запуск; при `false` используется совместимый JSON-режим. Поле `storage` в `GET /api/health` показывает фактически выбранное хранилище.
+
+Основные таблицы:
+
+- `clients` - контактные данные и браузерные сессии;
+- `dialogs` - состояние, очередь, назначение менеджера и временные метки;
+- `messages` - история сообщений и метаданные вложений;
+- `app_state` - счетчик удобных номеров диалогов.
+
 Если проект лежит в папке с кириллицей или пробелами и Docker Compose ругается на имя проекта, в `docker-compose.yml` уже задано явное имя `malina`.
-Контейнер использует локальные `managers.json` и `pending-managers.json`, историю диалогов хранит в Docker volume `malina_malina-dialogs`, а файлы - в `malina_malina-uploads`.
 По умолчанию кнопка завершения диалога повторно отправляется менеджеру через 5 минут. Для тестов можно изменить `FINISH_REMINDER_MS` в `.env`.
 Файлы из чата сохраняются в `APP_DATA_DIR/uploads` и пересылаются менеджеру в Telegram. По умолчанию один файл ограничен 8 МБ через `MAX_UPLOAD_BYTES`.
 
@@ -169,6 +198,7 @@ powershell -ExecutionPolicy Bypass -File .\stop-online-tunnel.ps1
 - `GET /api/health` - состояние сервера, бота, менеджеров и очереди.
 - `POST /api/leads` - новое сообщение клиента или продолжение диалога.
 - `GET /api/leads/:id/messages` - история сообщений для сайта.
+- `GET /api/leads/:id/status` - безопасный клиентский статус, номер обращения и позиция в очереди.
 
 ## Проверка логики
 
@@ -189,6 +219,9 @@ powershell -ExecutionPolicy Bypass -File .\stop-online-tunnel.ps1
 - `styles.css` - стили лендинга и виджета.
 - `script.js` - логика виджета на сайте.
 - `server.js` - HTTP API, хранение диалогов и Telegram polling.
+- `src/client-dialog-status.js` - клиентское представление состояния диалога без внутренних данных менеджера.
+- `test/client-dialog-status.test.js` - проверки клиентского статуса и позиции FIFO.
+- `ARCHITECTURE.md` - описание модулей и границы ответственности.
 - `.env.example` - пример переменных окружения.
 - `render.yaml` - конфигурация для деплоя на Render.
 - `Dockerfile`, `docker-compose.yml` - универсальная сборка для VPS, Docker-хостингов и локального Docker Desktop.

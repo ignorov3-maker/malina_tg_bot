@@ -5,7 +5,11 @@
   "description": "Landing page and Telegram chat prototype for Malina typography.",
   "scripts": {
     "start": "node server.js",
-    "check": "node --check server.js && node --check script.js"
+    "check": "node --check server.js && node --check script.js && node --check src/client-dialog-status.js && node --check src/postgres-dialog-repository.js",
+    "test": "node --test"
+  },
+  "dependencies": {
+    "pg": "^8.22.0"
   },
   "engines": {
     "node": ">=20"

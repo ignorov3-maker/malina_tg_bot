@@ -14,6 +14,12 @@ services:
         value: /var/data
       - key: TELEGRAM_BOT_TOKEN
         sync: false
+      - key: DATABASE_URL
+        sync: false
+      - key: DATABASE_REQUIRED
+        value: true
+      - key: DATABASE_SSL
+        value: false
     disk:
       name: malina-data
       mountPath: /var/data

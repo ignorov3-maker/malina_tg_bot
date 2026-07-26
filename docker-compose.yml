@@ -1,6 +1,22 @@
 name: malina
 
 services:
+  postgres:
+    image: postgres:17-alpine
+    container_name: malina-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: malina
+      POSTGRES_USER: malina
+      POSTGRES_PASSWORD: malina
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U malina -d malina"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    volumes:
+      - malina-postgres:/var/lib/postgresql/data
+
   malina:
     build:
       context: .
@@ -12,6 +28,12 @@ services:
       HOST: 0.0.0.0
       PORT: 4174
       APP_DATA_DIR: /var/lib/malina
+      DATABASE_URL: postgresql://malina:malina@postgres:5432/malina
+      DATABASE_REQUIRED: "true"
+      DATABASE_SSL: "false"
+    depends_on:
+      postgres:
+        condition: service_healthy
     ports:
       - "127.0.0.1:4174:4174"
     volumes:
@@ -21,5 +43,6 @@ services:
       - ./pending-managers.json:/var/lib/malina/pending-managers.json
 
 volumes:
+  malina-postgres:
   malina-dialogs:
   malina-uploads:

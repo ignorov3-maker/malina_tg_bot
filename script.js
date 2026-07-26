@@ -10,6 +10,7 @@ const contactFields = document.querySelector("[data-contact-fields]");
 const nameInput = document.querySelector("[data-client-name]");
 const emailInput = document.querySelector("[data-client-email]");
 const topicInput = document.querySelector("[data-client-topic]");
+const statusBar = document.querySelector("[data-chat-status]");
 
 const sessionKey = "malina-chat-session";
 const dialogKey = "malina-chat-dialog";
@@ -42,6 +43,9 @@ const clearSavedDialog = () => {
   activeDialogId = "";
   localStorage.removeItem(dialogKey);
   localStorage.removeItem(contactKey);
+  statusBar.hidden = true;
+  statusBar.dataset.status = "idle";
+  statusBar.textContent = "";
 };
 
 const openChat = () => {
@@ -198,6 +202,30 @@ const botReply = (text) => {
   window.setTimeout(() => addBubble(text), 250);
 };
 
+const renderDialogStatus = (data) => {
+  if (!data || !data.leadId) {
+    statusBar.hidden = true;
+    return;
+  }
+
+  const labels = {
+    new: "обращение принято",
+    active: "менеджер подключён",
+    queued: "ожидает менеджера",
+    closed: "диалог завершён"
+  };
+  const queueSuffix =
+    data.status === "queued" && data.queuePosition
+      ? ` · позиция в очереди ${data.queuePosition}`
+      : "";
+
+  statusBar.hidden = false;
+  statusBar.dataset.status = data.status || "new";
+  statusBar.textContent = `Обращение №${data.leadNumber} · ${
+    data.statusLabel || labels[data.status] || "статус уточняется"
+  }${queueSuffix}`;
+};
+
 const resetForNewDialog = () => {
   dialogClosed = false;
   renderedMessageIds = new Set();
@@ -216,6 +244,7 @@ const showDialogClosed = (data) => {
 
   dialogClosed = true;
   clearSavedDialog();
+  renderDialogStatus(data);
   setFormDisabled(true);
   setContactDisabled(false);
 
@@ -273,11 +302,30 @@ const syncMessages = async () => {
   }
 };
 
+const syncDialogStatus = async () => {
+  if (!activeDialogId) {
+    statusBar.hidden = true;
+    return;
+  }
+
+  const response = await fetch(`/api/leads/${encodeURIComponent(activeDialogId)}/status`);
+  if (!response.ok) return;
+
+  const data = await response.json();
+  renderDialogStatus(data);
+
+  if (data.status === "closed") {
+    showDialogClosed(data);
+  }
+};
+
+const syncDialog = () => Promise.all([syncMessages(), syncDialogStatus()]);
+
 const startPolling = () => {
   if (pollTimer || !activeDialogId) return;
 
-  syncMessages();
-  pollTimer = window.setInterval(syncMessages, 3000);
+  syncDialog();
+  pollTimer = window.setInterval(syncDialog, 3000);
 };
 
 const showDeliveryNotice = (result) => {
@@ -339,6 +387,7 @@ form.addEventListener("submit", async (event) => {
     const previousDialogId = activeDialogId;
     activeDialogId = result.leadId;
     dialogClosed = false;
+    renderDialogStatus(result);
     setFormDisabled(false);
     setContactDisabled(true);
     localStorage.setItem(dialogKey, activeDialogId);

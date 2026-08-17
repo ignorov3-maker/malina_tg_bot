@@ -25,6 +25,10 @@ const botToken = process.env.TELEGRAM_BOT_TOKEN || "";
 const finishReminderMs = Number(process.env.FINISH_REMINDER_MS || 5 * 60 * 1000);
 const maxUploadBytes = Number(process.env.MAX_UPLOAD_BYTES || 8 * 1024 * 1024);
 const maxRequestBytes = Number(process.env.MAX_REQUEST_BYTES || 12 * 1024 * 1024);
+const maxAttachments = Number(process.env.MAX_ATTACHMENTS || 3);
+const maxTotalUploadBytes = Number(process.env.MAX_TOTAL_UPLOAD_BYTES || 12 * 1024 * 1024);
+const leadRateLimitWindowMs = Number(process.env.LEAD_RATE_LIMIT_WINDOW_MS || 60 * 1000);
+const leadRateLimitMax = Number(process.env.LEAD_RATE_LIMIT_MAX || 12);
 const botApi = botToken ? `https://api.telegram.org/bot${botToken}` : "";
 const databaseUrl = process.env.DATABASE_URL || "";
 const databaseRequired = process.env.DATABASE_REQUIRED === "true";
@@ -51,6 +55,7 @@ let dialogRepository = null;
 let dialogStoreWriteQueue = Promise.resolve();
 let dialogStorage = "json";
 let dialogStorageHealthy = true;
+const leadRateLimits = new Map();
 
 const server = http.createServer(async (request, response) => {
   try {
@@ -81,6 +86,7 @@ const server = http.createServer(async (request, response) => {
     }
 
     if (request.method === "POST" && url.pathname === "/api/leads") {
+      if (!allowLeadRequest(request, response)) return;
       return handleClientMessage(request, response);
     }
 
@@ -136,10 +142,20 @@ async function handleClientMessage(request, response) {
   const rawTopic = cleanText(payload.topic || payload.product || "");
   const topic = rawTopic || "Не выбрана";
   const clientName = cleanText(payload.clientName || payload.name || "");
-  const clientEmail = cleanText(payload.clientEmail || payload.email || "");
+  const rawClientEmail = cleanText(payload.clientEmail || payload.email || "");
+  const clientEmail = isEmail(rawClientEmail) ? rawClientEmail : "";
+  const rawClientPhone = cleanText(payload.clientPhone || payload.phone || "").slice(0, 40);
+  const clientPhone = isPhone(rawClientPhone) ? rawClientPhone : "";
   const page = cleanText(payload.page || "");
   const text = cleanText(payload.message || "");
   const rawAttachments = Array.isArray(payload.attachments) ? payload.attachments : [];
+  const consent = payload.consent && typeof payload.consent === "object" ? payload.consent : {};
+  const rawBrief = payload.brief && typeof payload.brief === "object" ? payload.brief : {};
+  const brief = {
+    quantity: cleanText(rawBrief.quantity || "").slice(0, 120),
+    city: cleanText(rawBrief.city || "").slice(0, 120),
+    deadline: cleanText(rawBrief.deadline || "").slice(0, 120)
+  };
 
   if (!sessionId || (!text && rawAttachments.length === 0)) {
     return sendJson(response, 400, {
@@ -149,29 +165,58 @@ async function handleClientMessage(request, response) {
   }
 
   const store = readDialogStore();
+  const hasOpenDialog = store.leads.some(
+    (dialog) =>
+      dialog.status !== "closed" &&
+      (dialog.id === requestedDialogId || dialog.sessionId === sessionId)
+  );
+
+  if (!hasOpenDialog && (!clientName || (!clientEmail && !clientPhone) || !rawTopic)) {
+    return sendJson(response, 400, {
+      ok: false,
+      message: "Для начала диалога нужно указать имя, email или телефон и тему"
+    });
+  }
+
+  if (!hasOpenDialog && consent.accepted !== true) {
+    return sendJson(response, 400, {
+      ok: false,
+      message: "Для начала диалога необходимо согласие на обработку данных"
+    });
+  }
+
   const result = getOrCreateOpenDialog(store, {
     requestedDialogId,
     sessionId,
     topic,
     clientName,
     clientEmail,
-    page
+    clientPhone,
+    page,
+    brief
   });
   const dialog = result.dialog;
-
-  if (result.isNew && (!clientName || !isEmail(clientEmail) || !rawTopic)) {
-    return sendJson(response, 400, {
-      ok: false,
-      message: "Для начала диалога нужно указать имя, email и тему"
-    });
-  }
 
   dialog.topic = rawTopic || dialog.topic || topic;
   dialog.clientName = clientName || dialog.clientName;
   dialog.clientEmail = clientEmail || dialog.clientEmail;
+  dialog.clientPhone = clientPhone || dialog.clientPhone;
   dialog.page = page || dialog.page;
+  dialog.brief = {
+    quantity: brief.quantity || dialog.brief?.quantity || "",
+    city: brief.city || dialog.brief?.city || "",
+    deadline: brief.deadline || dialog.brief?.deadline || ""
+  };
   dialog.updatedAt = nowIso();
   dialog.lastClientAt = dialog.updatedAt;
+  if (result.isNew) {
+    dialog.consent = {
+      accepted: true,
+      version: cleanText(consent.version || "2026-08-17").slice(0, 80),
+      acceptedAt: isIsoDate(consent.acceptedAt) ? consent.acceptedAt : dialog.createdAt,
+      sessionId
+    };
+  }
   let attachments = [];
   try {
     attachments = saveClientAttachments(dialog, rawAttachments);
@@ -284,6 +329,7 @@ function getOrCreateOpenDialog(store, options) {
     topic: options.topic,
     clientName: options.clientName,
     clientEmail: options.clientEmail,
+    clientPhone: options.clientPhone,
     page: options.page,
     assignedManagerId: "",
     assignedAt: "",
@@ -292,6 +338,8 @@ function getOrCreateOpenDialog(store, options) {
     createdAt,
     updatedAt: createdAt,
     lastClientAt: "",
+    consent: {},
+    brief: options.brief || {},
     messages: [],
     telegramMessages: {}
   };
@@ -314,10 +362,14 @@ function queueDialog(dialog) {
 }
 
 function saveClientAttachments(dialog, rawAttachments) {
-  return rawAttachments.slice(0, 1).map((attachment) => {
+  if (rawAttachments.length > maxAttachments) {
+    throw new Error(`Можно прикрепить не более ${maxAttachments} файлов.`);
+  }
+
+  let totalBytes = 0;
+  const validated = rawAttachments.map((attachment) => {
     const originalName = cleanText(attachment.name || "file");
     const safeName = sanitizeFileName(originalName);
-    const type = cleanText(attachment.type || "application/octet-stream").slice(0, 120);
     const data = String(attachment.data || "").replace(/^data:[^,]+,/, "");
     const buffer = Buffer.from(data, "base64");
 
@@ -329,10 +381,26 @@ function saveClientAttachments(dialog, rawAttachments) {
       throw new Error(`Файл слишком большой. Максимум ${Math.round(maxUploadBytes / (1024 * 1024))} МБ.`);
     }
 
-    const dialogUploadsDir = path.join(uploadsDir, dialog.id);
-    if (!fs.existsSync(dialogUploadsDir)) fs.mkdirSync(dialogUploadsDir, { recursive: true });
+    totalBytes += buffer.length;
+    if (totalBytes > maxTotalUploadBytes) {
+      throw new Error(`Общий размер файлов превышает ${Math.round(maxTotalUploadBytes / (1024 * 1024))} МБ.`);
+    }
 
-    const id = `file_${Date.now()}_${Math.random().toString(16).slice(2)}`;
+    const type = detectAllowedFileType(safeName, buffer);
+    if (!type) {
+      throw new Error("Разрешены только PDF, PNG, JPG и WebP с корректным содержимым.");
+    }
+
+    return { originalName, safeName, type, buffer };
+  });
+
+  if (!validated.length) return [];
+
+  const dialogUploadsDir = path.join(uploadsDir, dialog.id);
+  if (!fs.existsSync(dialogUploadsDir)) fs.mkdirSync(dialogUploadsDir, { recursive: true });
+
+  return validated.map(({ originalName, safeName, type, buffer }, index) => {
+    const id = `file_${Date.now()}_${index}_${Math.random().toString(16).slice(2)}`;
     const filePath = path.join(dialogUploadsDir, `${id}_${safeName}`);
     fs.writeFileSync(filePath, buffer);
 
@@ -344,6 +412,41 @@ function saveClientAttachments(dialog, rawAttachments) {
       path: filePath
     };
   });
+}
+
+function detectAllowedFileType(fileName, buffer) {
+  const extension = path.extname(fileName).toLowerCase();
+
+  if (extension === ".pdf" && buffer.subarray(0, 5).toString("ascii") === "%PDF-") {
+    return "application/pdf";
+  }
+
+  if (
+    extension === ".png" &&
+    buffer.length >= 8 &&
+    buffer.subarray(0, 8).equals(Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]))
+  ) {
+    return "image/png";
+  }
+
+  if (
+    [".jpg", ".jpeg"].includes(extension) &&
+    buffer.length >= 3 &&
+    buffer[0] === 0xff && buffer[1] === 0xd8 && buffer[2] === 0xff
+  ) {
+    return "image/jpeg";
+  }
+
+  if (
+    extension === ".webp" &&
+    buffer.length >= 12 &&
+    buffer.subarray(0, 4).toString("ascii") === "RIFF" &&
+    buffer.subarray(8, 12).toString("ascii") === "WEBP"
+  ) {
+    return "image/webp";
+  }
+
+  return "";
 }
 
 function sanitizeFileName(name) {
@@ -389,7 +492,11 @@ function formatNewDialogText(dialog) {
     `Клиент: #${dialog.number}`,
     dialog.clientName ? `Имя: ${dialog.clientName}` : "",
     dialog.clientEmail ? `Email: ${dialog.clientEmail}` : "",
+    dialog.clientPhone ? `Телефон: ${dialog.clientPhone}` : "",
     `Тема: ${dialog.topic || "не выбрана"}`,
+    dialog.brief?.quantity ? `Тираж: ${dialog.brief.quantity}` : "",
+    dialog.brief?.city ? `Город: ${dialog.brief.city}` : "",
+    dialog.brief?.deadline ? `Срок: ${dialog.brief.deadline}` : "",
     dialog.page ? `Страница: ${dialog.page}` : "",
     "",
     clientMessages,
@@ -1198,6 +1305,7 @@ function normalizeDialog(dialog) {
     product: dialog.product || dialog.topic || "Не выбрана",
     clientName: dialog.clientName || "",
     clientEmail: dialog.clientEmail || "",
+    clientPhone: dialog.clientPhone || "",
     page: dialog.page || "",
     assignedManagerId: dialog.assignedManagerId || "",
     assignedAt: dialog.assignedAt || "",
@@ -1207,6 +1315,8 @@ function normalizeDialog(dialog) {
     updatedAt: dialog.updatedAt || dialog.createdAt || nowIso(),
     lastClientAt: dialog.lastClientAt || "",
     lastFinishReminderAt: dialog.lastFinishReminderAt || "",
+    consent: dialog.consent && typeof dialog.consent === "object" ? dialog.consent : {},
+    brief: dialog.brief && typeof dialog.brief === "object" ? dialog.brief : {},
     messages: dialog.messages || [],
     telegramMessages: dialog.telegramMessages || {}
   };
@@ -1296,6 +1406,46 @@ function cleanText(value) {
 
 function isEmail(value) {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
+}
+
+function isPhone(value) {
+  const digits = String(value || "").replace(/\D/g, "");
+  return digits.length >= 10 && digits.length <= 15;
+}
+
+function isIsoDate(value) {
+  return typeof value === "string" && !Number.isNaN(Date.parse(value));
+}
+
+function allowLeadRequest(request, response) {
+  const now = Date.now();
+  const key = String(request.socket.remoteAddress || "unknown");
+  const current = leadRateLimits.get(key);
+
+  if (!current || now - current.startedAt >= leadRateLimitWindowMs) {
+    leadRateLimits.set(key, { startedAt: now, count: 1 });
+    return true;
+  }
+
+  if (current.count >= leadRateLimitMax) {
+    const retryAfterSeconds = Math.max(1, Math.ceil((current.startedAt + leadRateLimitWindowMs - now) / 1000));
+    response.setHeader("Retry-After", String(retryAfterSeconds));
+    sendJson(response, 429, {
+      ok: false,
+      message: `Слишком много сообщений. Повторите через ${retryAfterSeconds} сек.`
+    });
+    return false;
+  }
+
+  current.count += 1;
+
+  if (leadRateLimits.size > 5000) {
+    for (const [entryKey, entry] of leadRateLimits) {
+      if (now - entry.startedAt >= leadRateLimitWindowMs) leadRateLimits.delete(entryKey);
+    }
+  }
+
+  return true;
 }
 
 function nowIso() {

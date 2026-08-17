@@ -9,7 +9,7 @@
     <title>Малина — печать, реклама и брендирование</title>
     <meta name="description" content="Полиграфия, наружная реклама, упаковка, сувениры и текстиль. Дизайн и производство в одном месте. Цена по запросу.">
     <link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
-    <link rel="stylesheet" href="styles.css?v=20260817-5">
+    <link rel="stylesheet" href="styles.css?v=20260817-9">
   </head>
   <body>
     <a class="skip-link" href="#content">Перейти к содержанию</a>
@@ -21,7 +21,7 @@
       <nav class="nav" aria-label="Основная навигация">
         <a href="#services">Услуги</a><a href="#portfolio">Работы</a><a href="#process">Процесс</a>
       </nav>
-      <button class="pill-button" type="button" data-open-chat>Обсудить задачу <span aria-hidden="true">↗</span></button>
+      <button class="pill-button" type="button" data-open-chat aria-controls="manager-chat" aria-expanded="false">Обсудить задачу</button>
     </header>
 
     <main id="content">
@@ -31,8 +31,8 @@
           <h1>Идеи обретают <em>форму</em></h1>
           <p class="hero-lead">От визитки до оформления пространства. Разрабатываем дизайн, печатаем, брендируем и собираем готовое решение для бизнеса.</p>
           <div class="hero-actions">
-            <button class="primary-button" type="button" data-open-chat>Запросить расчёт <span aria-hidden="true">↗</span></button>
-            <a class="underlined-link" href="#services">Смотреть услуги <span aria-hidden="true">↓</span></a>
+            <button class="primary-button" type="button" data-open-chat aria-controls="manager-chat" aria-expanded="false">Получить расчёт</button>
+            <a class="secondary-button" href="#services">Посмотреть все услуги</a>
           </div>
           <ul class="hero-notes" aria-label="Преимущества"><li>Дизайн и производство</li><li>Малые и большие тиражи</li><li>Цена по запросу</li></ul>
         </div>
@@ -87,7 +87,7 @@
         </ol>
       </section>
 
-      <section class="final-cta"><p class="section-label">Есть идея?</p><div><h2>Давайте сделаем<br><em>её заметной</em></h2><button class="cta-button" type="button" data-open-chat><span>Написать менеджеру</span><b aria-hidden="true">↗</b></button></div></section>
+      <section class="final-cta"><p class="section-label">Есть идея?</p><div><h2>Давайте сделаем<br><em>её заметной</em></h2><button class="cta-button" type="button" data-open-chat aria-controls="manager-chat" aria-expanded="false">Открыть чат с менеджером</button></div></section>
     </main>
 
     <footer>
@@ -97,17 +97,19 @@
     </footer>
 
     <div class="chat-widget" data-chat-widget>
-      <button class="chat-fab" type="button" data-open-chat aria-label="Открыть чат с менеджером"><span aria-hidden="true"></span></button>
-      <section class="chat-window" aria-label="Чат с менеджером Малины">
+      <button class="chat-fab" type="button" data-open-chat aria-label="Открыть чат с менеджером" aria-controls="manager-chat" aria-expanded="false"><span aria-hidden="true"></span></button>
+      <section class="chat-window" id="manager-chat" aria-label="Чат с менеджером Малины" aria-hidden="true">
         <header>
           <div><strong>Менеджер Малины</strong><span>отвечает из Telegram</span></div>
-          <button type="button" data-close-chat aria-label="Закрыть чат">×</button>
+          <button class="chat-close" type="button" data-close-chat aria-label="Закрыть чат"><span aria-hidden="true"></span></button>
         </header>
+        <div class="chat-status" data-chat-status aria-live="polite" hidden></div>
         <div class="chat-body" data-chat-body aria-live="polite">
           <div class="bot-bubble">Здравствуйте! Заполните контакты и напишите, что нужно изготовить. Ответ менеджера появится прямо здесь.</div>
           <div class="contact-fields" data-contact-fields>
             <label><span>Имя</span><input data-client-name type="text" placeholder="Как к вам обращаться" autocomplete="name" required></label>
-            <label><span>Email</span><input data-client-email type="email" placeholder="name@example.ru" autocomplete="email" required></label>
+            <label><span>Email</span><input data-client-email type="email" placeholder="name@example.ru" autocomplete="email"></label>
+            <label><span>Телефон</span><input data-client-phone type="tel" placeholder="+7 978 000-00-00" autocomplete="tel"></label>
             <label><span>Тема</span><select data-client-topic required>
               <option value="">Выберите направление</option>
               <option value="Полиграфия">Полиграфия</option>
@@ -118,6 +120,11 @@
               <option value="Дизайн">Дизайн</option>
               <option value="Другое">Другое</option>
             </select></label>
+            <div class="brief-fields">
+              <label><span>Тираж</span><input data-client-quantity type="text" placeholder="Например, 500 шт."></label>
+              <label><span>Город</span><input data-client-city type="text" placeholder="Куда доставить"></label>
+              <label class="brief-deadline"><span>Желаемый срок</span><input data-client-deadline type="text" placeholder="Например, до 15 сентября"></label>
+            </div>
           </div>
           <div class="choice-row" aria-label="Популярные темы">
             <button type="button" data-choice="Полиграфия">Полиграфия</button>
@@ -127,14 +134,15 @@
         </div>
         <form class="chat-form" data-chat-form>
           <input data-chat-message name="message" type="text" placeholder="Тираж, размер, срок или вопрос" autocomplete="off">
-          <input data-chat-file type="file" hidden>
-          <button class="attach-button" data-attach-file type="button" title="Прикрепить файл" aria-label="Прикрепить файл">＋</button>
+          <input data-chat-file type="file" accept=".pdf,.png,.jpg,.jpeg,.webp" multiple hidden>
+          <button class="attach-button" data-attach-file type="button" title="Прикрепить до трёх файлов" aria-label="Прикрепить до трёх файлов">Файлы</button>
           <button data-send-message type="submit">Отправить</button>
           <span class="file-preview" data-file-preview hidden></span>
+          <button class="clear-file" data-clear-file type="button" hidden>Убрать файлы</button>
           <label class="chat-consent"><input data-chat-consent type="checkbox" required> <span>Даю согласие на обработку данных по <a href="privacy.html">политике конфиденциальности</a>.</span></label>
         </form>
       </section>
     </div>
-    <script src="script.js?v=20260817-3"></script>
+    <script src="script.js?v=20260817-7"></script>
   </body>
 </html>

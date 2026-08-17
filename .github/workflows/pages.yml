@@ -3,7 +3,7 @@ name: Deploy static preview to GitHub Pages
 on:
   workflow_dispatch:
   push:
-    branches: [main]
+    branches: [main, codex/site-preview]
     paths:
       - index.html
       - styles.css

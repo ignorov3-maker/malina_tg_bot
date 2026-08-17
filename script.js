@@ -5,17 +5,29 @@ const input = form.querySelector("[data-chat-message]");
 const fileInput = form.querySelector("[data-chat-file]");
 const attachButton = form.querySelector("[data-attach-file]");
 const filePreview = form.querySelector("[data-file-preview]");
+const clearFileButton = form.querySelector("[data-clear-file]");
 const submitButton = form.querySelector("[data-send-message]");
 const consentInput = form.querySelector("[data-chat-consent]");
+const statusElement = document.querySelector("[data-chat-status]");
+const chatWindow = document.querySelector(".chat-window");
+const openChatButtons = [...document.querySelectorAll("[data-open-chat]")];
 const contactFields = document.querySelector("[data-contact-fields]");
 const nameInput = document.querySelector("[data-client-name]");
 const emailInput = document.querySelector("[data-client-email]");
+const phoneInput = document.querySelector("[data-client-phone]");
 const topicInput = document.querySelector("[data-client-topic]");
+const quantityInput = document.querySelector("[data-client-quantity]");
+const cityInput = document.querySelector("[data-client-city]");
+const deadlineInput = document.querySelector("[data-client-deadline]");
 
 const sessionKey = "malina-chat-session";
 const dialogKey = "malina-chat-dialog";
 const contactKey = "malina-chat-contact";
 const maxAttachmentBytes = 8 * 1024 * 1024;
+const maxAttachments = 3;
+const maxTotalAttachmentBytes = 12 * 1024 * 1024;
+const allowedAttachmentPattern = /\.(pdf|png|jpe?g|webp)$/i;
+const consentVersion = "2026-08-17";
 const sessionId =
   localStorage.getItem(sessionKey) ||
   (window.crypto && crypto.randomUUID ? crypto.randomUUID() : String(Date.now()));
@@ -26,6 +38,22 @@ let activeDialogId = localStorage.getItem(dialogKey) || "";
 let renderedMessageIds = new Set();
 let pollTimer = null;
 let dialogClosed = false;
+let lastChatTrigger = null;
+
+const updateVisualViewport = () => {
+  const viewport = window.visualViewport;
+  const viewportHeight = viewport?.height || window.innerHeight;
+  const viewportOffset = viewport?.offsetTop || 0;
+  const keyboardInset = Math.max(0, window.innerHeight - viewportHeight - viewportOffset);
+
+  document.documentElement.style.setProperty("--visual-viewport-height", `${viewportHeight}px`);
+  document.documentElement.style.setProperty("--visual-viewport-bottom", `${keyboardInset}px`);
+};
+
+updateVisualViewport();
+window.visualViewport?.addEventListener("resize", updateVisualViewport);
+window.visualViewport?.addEventListener("scroll", updateVisualViewport);
+window.addEventListener("orientationchange", updateVisualViewport);
 
 const getSavedContact = () => {
   try {
@@ -39,26 +67,50 @@ const saveContact = (contact) => {
   localStorage.setItem(contactKey, JSON.stringify(contact));
 };
 
+const renderDialogStatus = (data) => {
+  if (!data || !data.leadNumber) {
+    statusElement.hidden = true;
+    return;
+  }
+
+  const queue = data.queuePosition ? ` · место в очереди: ${data.queuePosition}` : "";
+  statusElement.textContent = `Обращение №${data.leadNumber} · ${data.statusLabel || "статус уточняется"}${queue}`;
+  statusElement.dataset.state = data.status || "new";
+  statusElement.hidden = false;
+};
+
 const clearSavedDialog = () => {
   activeDialogId = "";
   localStorage.removeItem(dialogKey);
   localStorage.removeItem(contactKey);
+  renderDialogStatus(null);
 };
 
-const openChat = () => {
+const openChat = (event) => {
+  updateVisualViewport();
+  lastChatTrigger = event?.currentTarget || document.activeElement;
   widget.classList.add("is-open");
-  input.focus();
+  chatWindow.setAttribute("aria-hidden", "false");
+  openChatButtons.forEach((button) => button.setAttribute("aria-expanded", "true"));
+  const canUseAutoFocus = window.matchMedia("(min-width: 651px) and (pointer: fine)").matches;
+  if (canUseAutoFocus) {
+    (activeDialogId ? input : nameInput).focus({ preventScroll: true });
+  }
   startPolling();
 };
 
 const closeChat = () => {
   widget.classList.remove("is-open");
+  chatWindow.setAttribute("aria-hidden", "true");
+  openChatButtons.forEach((button) => button.setAttribute("aria-expanded", "false"));
+  if (lastChatTrigger && typeof lastChatTrigger.focus === "function") lastChatTrigger.focus();
 };
 
 const setFormDisabled = (disabled) => {
   input.disabled = disabled;
   fileInput.disabled = disabled;
   attachButton.disabled = disabled;
+  clearFileButton.disabled = disabled;
   submitButton.disabled = disabled;
   consentInput.disabled = disabled;
 };
@@ -66,38 +118,69 @@ const setFormDisabled = (disabled) => {
 const setContactDisabled = (disabled) => {
   nameInput.disabled = disabled;
   emailInput.disabled = disabled;
+  phoneInput.disabled = disabled;
   topicInput.disabled = disabled;
+  quantityInput.disabled = disabled;
+  cityInput.disabled = disabled;
+  deadlineInput.disabled = disabled;
   contactFields.classList.toggle("is-locked", disabled);
 };
 
 const getContact = () => ({
   name: nameInput.value.trim(),
   email: emailInput.value.trim(),
-  topic: topicInput.value.trim()
+  phone: phoneInput.value.trim(),
+  topic: topicInput.value.trim(),
+  quantity: quantityInput.value.trim(),
+  city: cityInput.value.trim(),
+  deadline: deadlineInput.value.trim()
 });
 
 const isEmail = (value) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
+const isPhone = (value) => value.replace(/\D/g, "").length >= 10;
+
+const clearFieldError = (field) => {
+  field.removeAttribute("aria-invalid");
+  field.closest("label")?.querySelector(".contact-field-error")?.remove();
+};
+
+const showFieldError = (field, message) => {
+  clearFieldError(field);
+  field.setAttribute("aria-invalid", "true");
+
+  const error = document.createElement("small");
+  error.className = "contact-field-error";
+  error.textContent = message;
+  field.closest("label")?.appendChild(error);
+  field.focus();
+  field.scrollIntoView({ block: "nearest" });
+};
+
+[nameInput, emailInput, phoneInput, topicInput].forEach((field) => {
+  field.addEventListener("input", () => clearFieldError(field));
+  field.addEventListener("change", () => clearFieldError(field));
+});
 
 const validateStartFields = () => {
   if (activeDialogId) return true;
 
   const contact = getContact();
 
+  [nameInput, emailInput, phoneInput, topicInput].forEach(clearFieldError);
+
   if (!contact.name) {
-    botReply("Укажите имя, чтобы менеджер понимал, к кому обращаться.");
-    nameInput.focus();
+    showFieldError(nameInput, "Укажите имя, чтобы менеджер знал, как к вам обращаться.");
     return false;
   }
 
-  if (!isEmail(contact.email)) {
-    botReply("Укажите корректный email для связи и расчета.");
-    emailInput.focus();
+  if (!isEmail(contact.email) && !isPhone(contact.phone)) {
+    const target = contact.email ? emailInput : phoneInput;
+    showFieldError(target, "Укажите корректный email или телефон.");
     return false;
   }
 
   if (!contact.topic) {
-    botReply("Выберите тему обращения.");
-    topicInput.focus();
+    showFieldError(topicInput, "Выберите направление обращения.");
     return false;
   }
 
@@ -140,38 +223,53 @@ const readFileAsBase64 = (file) =>
     reader.readAsDataURL(file);
   });
 
-const buildAttachment = async () => {
-  const file = fileInput.files && fileInput.files[0];
-  if (!file) return null;
+const buildAttachments = async () => {
+  const files = [...(fileInput.files || [])];
+  if (!files.length) return [];
+  if (files.length > maxAttachments) throw new Error(`Можно прикрепить не более ${maxAttachments} файлов.`);
 
-  if (file.size > maxAttachmentBytes) {
-    throw new Error(`Файл слишком большой. Максимум ${formatBytes(maxAttachmentBytes)}.`);
+  const totalBytes = files.reduce((sum, file) => sum + file.size, 0);
+  if (totalBytes > maxTotalAttachmentBytes) {
+    throw new Error(`Общий размер файлов не должен превышать ${formatBytes(maxTotalAttachmentBytes)}.`);
   }
 
-  return {
-    name: file.name,
-    type: file.type || "application/octet-stream",
-    size: file.size,
-    data: await readFileAsBase64(file)
-  };
+  return Promise.all(files.map(async (file) => {
+    if (!allowedAttachmentPattern.test(file.name)) {
+      throw new Error("Разрешены только PDF, PNG, JPG и WebP.");
+    }
+    if (file.size > maxAttachmentBytes) {
+      throw new Error(`Файл ${file.name} слишком большой. Максимум ${formatBytes(maxAttachmentBytes)}.`);
+    }
+    return {
+      name: file.name,
+      type: file.type || "application/octet-stream",
+      size: file.size,
+      data: await readFileAsBase64(file)
+    };
+  }));
 };
 
 const clearAttachment = () => {
   fileInput.value = "";
   filePreview.hidden = true;
   filePreview.textContent = "";
+  clearFileButton.hidden = true;
 };
 
 const updateFilePreview = () => {
-  const file = fileInput.files && fileInput.files[0];
+  const files = [...(fileInput.files || [])];
 
-  if (!file) {
+  if (!files.length) {
     clearAttachment();
     return;
   }
 
   filePreview.hidden = false;
-  filePreview.textContent = `${file.name} · ${formatBytes(file.size)}`;
+  clearFileButton.hidden = false;
+  filePreview.textContent = files
+    .slice(0, maxAttachments)
+    .map((file) => `${file.name} · ${formatBytes(file.size)}`)
+    .join("; ");
 };
 
 const addActionButton = (text, onClick, messageId = "") => {
@@ -208,7 +306,11 @@ const resetForNewDialog = () => {
   setContactDisabled(false);
   nameInput.value = "";
   emailInput.value = "";
+  phoneInput.value = "";
   topicInput.value = "";
+  quantityInput.value = "";
+  cityInput.value = "";
+  deadlineInput.value = "";
   consentInput.checked = false;
   addBubble("Новый диалог начат. Заполните контакты и напишите сообщение.");
   nameInput.focus();
@@ -219,6 +321,7 @@ const showDialogClosed = (data) => {
 
   dialogClosed = true;
   clearSavedDialog();
+  renderDialogStatus({ ...data, statusLabel: "диалог завершён" });
   setFormDisabled(true);
   setContactDisabled(false);
 
@@ -231,7 +334,7 @@ const showDialogClosed = (data) => {
   }
 };
 
-const sendClientMessage = async (message, attachment = null) => {
+const sendClientMessage = async (message, attachments = []) => {
   const contact = getContact();
   const response = await fetch("/api/leads", {
     method: "POST",
@@ -241,10 +344,21 @@ const sendClientMessage = async (message, attachment = null) => {
       leadId: activeDialogId,
       clientName: contact.name,
       clientEmail: contact.email,
+      clientPhone: contact.phone,
       topic: contact.topic,
       product: contact.topic,
+      brief: {
+        quantity: contact.quantity,
+        city: contact.city,
+        deadline: contact.deadline
+      },
       message,
-      attachments: attachment ? [attachment] : [],
+      attachments,
+      consent: {
+        accepted: consentInput.checked,
+        version: consentVersion,
+        acceptedAt: new Date().toISOString()
+      },
       page: location.href
     })
   });
@@ -260,7 +374,22 @@ const sendClientMessage = async (message, attachment = null) => {
 const syncMessages = async () => {
   if (!activeDialogId) return;
 
-  const response = await fetch(`/api/leads/${encodeURIComponent(activeDialogId)}/messages`);
+  const encodedDialogId = encodeURIComponent(activeDialogId);
+  const [response, statusResponse] = await Promise.all([
+    fetch(`/api/leads/${encodedDialogId}/messages`),
+    fetch(`/api/leads/${encodedDialogId}/status`)
+  ]);
+
+  if (statusResponse.ok) renderDialogStatus(await statusResponse.json());
+
+  if (response.status === 404) {
+    clearSavedDialog();
+    setContactDisabled(false);
+    addBubble("Предыдущий диалог больше недоступен. Заполните контакты, чтобы начать новый.");
+    nameInput.focus();
+    return;
+  }
+
   if (!response.ok) return;
 
   const data = await response.json();
@@ -279,8 +408,9 @@ const syncMessages = async () => {
 const startPolling = () => {
   if (pollTimer || !activeDialogId) return;
 
-  syncMessages();
-  pollTimer = window.setInterval(syncMessages, 3000);
+  const poll = () => syncMessages().catch(() => {});
+  poll();
+  pollTimer = window.setInterval(poll, 3000);
 };
 
 const showDeliveryNotice = (result) => {
@@ -299,22 +429,27 @@ const showDeliveryNotice = (result) => {
   }
 };
 
-document.querySelectorAll("[data-open-chat]").forEach((button) => {
+openChatButtons.forEach((button) => {
   button.addEventListener("click", openChat);
 });
 
 document.querySelector("[data-close-chat]").addEventListener("click", closeChat);
 
+document.addEventListener("keydown", (event) => {
+  if (event.key === "Escape" && widget.classList.contains("is-open")) closeChat();
+});
+
 document.querySelectorAll("[data-choice]").forEach((button) => {
   button.addEventListener("click", () => {
     topicInput.value = button.dataset.choice;
     addBubble(button.dataset.choice, "user");
-    botReply("Отлично. Теперь укажите имя, email и напишите тираж, город или вопрос.");
+    botReply("Отлично. Теперь укажите имя, телефон или email и добавьте детали заказа.");
   });
 });
 
 attachButton.addEventListener("click", () => fileInput.click());
 fileInput.addEventListener("change", updateFilePreview);
+clearFileButton.addEventListener("click", clearAttachment);
 
 form.addEventListener("submit", async (event) => {
   event.preventDefault();
@@ -330,15 +465,15 @@ form.addEventListener("submit", async (event) => {
 
   if (!validateStartFields()) return;
 
-  let attachment = null;
+  let attachments = [];
 
   try {
-    attachment = await buildAttachment();
-    addBubble(value || "Отправлен файл", "user", "", attachment ? [attachment] : []);
+    attachments = await buildAttachments();
+    addBubble(value || "Отправлены файлы", "user", "", attachments);
     input.value = "";
     setFormDisabled(true);
 
-    const result = await sendClientMessage(value, attachment);
+    const result = await sendClientMessage(value, attachments);
     const previousDialogId = activeDialogId;
     activeDialogId = result.leadId;
     dialogClosed = false;
@@ -363,10 +498,15 @@ form.addEventListener("submit", async (event) => {
 
 const savedContact = getSavedContact();
 
-if (activeDialogId && savedContact.name && savedContact.email && savedContact.topic) {
+if (activeDialogId && savedContact.name && (savedContact.email || savedContact.phone) && savedContact.topic) {
   nameInput.value = savedContact.name;
-  emailInput.value = savedContact.email;
+  emailInput.value = savedContact.email || "";
+  phoneInput.value = savedContact.phone || "";
   topicInput.value = savedContact.topic;
+  quantityInput.value = savedContact.quantity || "";
+  cityInput.value = savedContact.city || "";
+  deadlineInput.value = savedContact.deadline || "";
+  consentInput.checked = true;
   setContactDisabled(true);
 } else if (activeDialogId) {
   clearSavedDialog();

@@ -9,6 +9,7 @@ CREATE TABLE IF NOT EXISTS clients (
   session_id text NOT NULL UNIQUE,
   name text NOT NULL DEFAULT '',
   email text NOT NULL DEFAULT '',
+  phone text NOT NULL DEFAULT '',
   created_at timestamptz NOT NULL DEFAULT now(),
   updated_at timestamptz NOT NULL DEFAULT now()
 );
@@ -30,8 +31,19 @@ CREATE TABLE IF NOT EXISTS dialogs (
   updated_at timestamptz NOT NULL,
   last_client_at timestamptz,
   last_finish_reminder_at timestamptz,
+  consent jsonb NOT NULL DEFAULT '{}'::jsonb,
+  brief jsonb NOT NULL DEFAULT '{}'::jsonb,
   telegram_messages jsonb NOT NULL DEFAULT '{}'::jsonb
 );
+
+ALTER TABLE clients
+  ADD COLUMN IF NOT EXISTS phone text NOT NULL DEFAULT '';
+
+ALTER TABLE dialogs
+  ADD COLUMN IF NOT EXISTS consent jsonb NOT NULL DEFAULT '{}'::jsonb;
+
+ALTER TABLE dialogs
+  ADD COLUMN IF NOT EXISTS brief jsonb NOT NULL DEFAULT '{}'::jsonb;
 
 CREATE INDEX IF NOT EXISTS dialogs_session_open_idx
   ON dialogs (session_id, status);

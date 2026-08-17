@@ -2,14 +2,14 @@
 <html lang="ru">
   <head>
     <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, interactive-widget=resizes-content">
     <meta name="theme-color" content="#f6f2ea">
     <meta name="referrer" content="no-referrer">
     <meta http-equiv="Content-Security-Policy" content="default-src 'self'; img-src 'self' data:; style-src 'self'; script-src 'self'; connect-src 'self'; font-src 'self'; object-src 'none'; frame-src 'none'; base-uri 'self'; form-action 'self'">
     <title>Малина — печать, реклама и брендирование</title>
     <meta name="description" content="Полиграфия, наружная реклама, упаковка, сувениры и текстиль. Дизайн и производство в одном месте. Цена по запросу.">
     <link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
-    <link rel="stylesheet" href="styles.css?v=20260817-5">
+    <link rel="stylesheet" href="styles.css?v=20260817-11">
   </head>
   <body>
     <a class="skip-link" href="#content">Перейти к содержанию</a>
@@ -21,7 +21,7 @@
       <nav class="nav" aria-label="Основная навигация">
         <a href="#services">Услуги</a><a href="#portfolio">Работы</a><a href="#process">Процесс</a>
       </nav>
-      <button class="pill-button" type="button" data-open-chat>Обсудить задачу <span aria-hidden="true">↗</span></button>
+      <button class="pill-button" type="button" data-open-chat aria-controls="manager-chat" aria-expanded="false">Обсудить задачу <span class="button-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M7 17 17 7M9 7h8v8"/></svg></span></button>
     </header>
 
     <main id="content">
@@ -31,8 +31,8 @@
           <h1>Идеи обретают <em>форму</em></h1>
           <p class="hero-lead">От визитки до оформления пространства. Разрабатываем дизайн, печатаем, брендируем и собираем готовое решение для бизнеса.</p>
           <div class="hero-actions">
-            <button class="primary-button" type="button" data-open-chat>Запросить расчёт <span aria-hidden="true">↗</span></button>
-            <a class="underlined-link" href="#services">Смотреть услуги <span aria-hidden="true">↓</span></a>
+            <button class="primary-button" type="button" data-open-chat aria-controls="manager-chat" aria-expanded="false">Запросить расчёт <span class="button-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M7 17 17 7M9 7h8v8"/></svg></span></button>
+            <a class="underlined-link" href="#services">Смотреть услуги <span class="link-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M12 5v14M6 13l6 6 6-6"/></svg></span></a>
           </div>
           <ul class="hero-notes" aria-label="Преимущества"><li>Дизайн и производство</li><li>Малые и большие тиражи</li><li>Цена по запросу</li></ul>
         </div>
@@ -47,17 +47,18 @@
       <section class="section services" id="services">
         <div class="section-heading">
           <p class="section-label">01 / Услуги</p>
-          <div><h2>Всё, чтобы бренд<br>выглядел цельно</h2><p>Стоимость рассчитывается индивидуально после уточнения материала, размера, технологии, тиража и сроков.</p></div>
+          <div><h2>Всё, чтобы бренд<br>выглядел цельно</h2><p>Основные направления типографии «Малина»: от печати и оформления пространства до сувениров, текстиля и разработки макетов.</p></div>
         </div>
         <div class="service-grid">
-          <article class="service-card service-card-accent"><div class="service-number">01</div><div class="service-image"><img src="assets/services/print.webp" alt="Календари, брошюры и карманная полиграфия Малина" width="1200" height="720" loading="lazy"></div><h3>Полиграфия</h3><p>Визитки, листовки, буклеты, каталоги, брошюры, блокноты, папки, календари, меню и дипломы.</p><span>Цена по запросу</span></article>
-          <article class="service-card service-card-dark"><div class="service-number">02</div><div class="service-image"><img src="assets/services/outdoor.webp" alt="Брендирование автомобиля рекламной плёнкой" width="1200" height="720" loading="lazy"></div><h3>Наружная реклама</h3><p>Вывески, баннеры, таблички, оформление витрин, информационные стенды, пресс-воллы и ролл-апы.</p><span>Цена по запросу</span></article>
-          <article class="service-card service-card-sand"><div class="service-number">03</div><div class="service-image"><img src="assets/services/packaging.webp" alt="Фирменный бумажный пакет с нанесённым логотипом" width="1200" height="720" loading="lazy"></div><h3>Упаковка и этикетка</h3><p>Пакеты, коробки, наклейки, бирки, стикерпаки, этикетки и комплексное оформление продукта.</p><span>Цена по запросу</span></article>
-          <article class="service-card service-card-pink"><div class="service-number">04</div><div class="service-image"><img src="assets/services/souvenirs.webp" alt="Партия брендированных термосов для корпоративного заказа" width="1200" height="720" loading="lazy"></div><h3>Сувениры</h3><p>Кружки, термосы, ручки, значки, фотокниги, холсты, пазлы, часы и подарочные наборы.</p><span>Цена по запросу</span></article>
-          <article class="service-card service-card-lime"><div class="service-number">05</div><div class="service-image"><img src="assets/services/textile.webp" alt="Бейсболки с фирменными шевронами" width="1200" height="720" loading="lazy"></div><h3>Текстиль и мерч</h3><p>Футболки, толстовки, бейсболки, шопперы и спецодежда с печатью или вышивкой.</p><span>Цена по запросу</span></article>
-          <article class="service-card service-card-outline"><div class="service-number">06</div><div class="service-image"><img src="assets/services/design.webp" alt="Набор макетов и готовой рекламной продукции Малина" width="1200" height="720" loading="lazy"></div><h3>Дизайн и подготовка</h3><p>Логотипы, фирменный стиль, макеты, ретушь, адаптация и предпечатная проверка файлов.</p><span>Цена по запросу</span></article>
+          <article class="service-card service-card-accent"><div class="service-number">01</div><div class="service-image"><img src="assets/services/print-price.webp" alt="Образцы визиток из прайс-листа типографии Малина" width="1000" height="298" loading="lazy"></div><h3>Полиграфия</h3><p>Визитки, листовки, буклеты, каталоги, брошюры, блокноты, папки, календари, меню и дипломы.</p></article>
+          <article class="service-card service-card-dark"><div class="service-number">02</div><div class="service-image"><img src="assets/services/exhibition-price.webp" alt="Выставочные мобильные стенды из прайс-листа Малины" width="807" height="300" loading="lazy"></div><h3>Выставочные конструкции</h3><p>Мобильные стенды, пресс-воллы, ролл-апы, информационные стойки и оформление пространства для мероприятий.</p></article>
+          <article class="service-card service-card-sand"><div class="service-number">03</div><div class="service-image"><img src="assets/services/stickers-price.webp" alt="Фигурные наклейки с контурной резкой из прайс-листа Малины" width="1380" height="594" loading="lazy"></div><h3>Наклейки и таблички</h3><p>Наклейки с контурной резкой, стикеры, пластиковые карты, адресные таблички и интерьерная навигация.</p></article>
+          <article class="service-card service-card-pink"><div class="service-number">04</div><div class="service-image"><img src="assets/services/souvenirs-price.webp" alt="Сувенирная продукция с нанесением из прайс-листа Малины" width="1280" height="519" loading="lazy"></div><h3>Сувенирная продукция</h3><p>Кружки, термосы, ручки, брелоки, косметички, фотосувениры и подарки с логотипом компании.</p></article>
+          <article class="service-card service-card-lime"><div class="service-number">05</div><div class="service-image"><img src="assets/services/textile-price.webp" alt="Цветные футболки для печати из прайс-листа Малины" width="974" height="339" loading="lazy"></div><h3>Одежда и текстиль</h3><p>Футболки, толстовки, бейсболки, шопперы и спецодежда с полноцветной печатью или вышивкой.</p></article>
+          <article class="service-card service-card-outline"><div class="service-number">06</div><div class="service-image"><img src="assets/services/design-price.webp" alt="Рабочее место графического дизайнера из прайс-листа Малины" width="1000" height="496" loading="lazy"></div><h3>Графический дизайн</h3><p>Логотипы, фирменный стиль, макеты полиграфии, ретушь, адаптация и предпечатная подготовка файлов.</p></article>
         </div>
-        <details class="all-services"><summary>Показать дополнительные направления <span aria-hidden="true">＋</span></summary><div class="service-tags"><span>Копицентр и сканирование</span><span>Пластиковые карты</span><span>Фото на документы</span><span>Широкоформатная печать</span><span>Плоттерная резка</span><span>Выставочные конструкции</span><span>Оформление HoReCa</span><span>Бейджи и браслеты</span><span>Воздушные шары</span><span>Торговые стойки</span><span>Навигация и таблички</span><span>Сувенирный шоколад</span></div></details>
+        <details class="all-services"><summary><span class="summary-note">Ещё услуги и направления</span><span class="summary-arrow" aria-hidden="true"></span></summary><div class="service-tags"><span>Копицентр и сканирование</span><span>Пластиковые карты</span><span>Фото на документы</span><span>Широкоформатная печать</span><span>Плоттерная резка</span><span>Выставочные конструкции</span><span>Оформление HoReCa</span><span>Бейджи и браслеты</span><span>Воздушные шары</span><span>Торговые стойки</span><span>Навигация и таблички</span><span>Сувенирный шоколад</span></div></details>
+        <aside class="services-price"><div><span>Материал · размер · тираж · срок</span><strong>Хотите узнать цену?</strong><p>Расскажите о задаче — менеджер уточнит детали и подготовит индивидуальный расчёт.</p></div><button type="button" data-open-chat aria-controls="manager-chat" aria-expanded="false">Узнать цену в чате</button></aside>
       </section>
 
       <section class="section portfolio" id="portfolio">
@@ -66,14 +67,15 @@
           <div><h2>Не обещаем<br>на словах</h2><p>Показываем реальные выполненные заказы. Фотографии подготовлены в едином стиле, без фотостоков и вымышленных кейсов.</p></div>
         </div>
         <div class="portfolio-grid">
-          <figure class="work-card work-card-wide"><img src="assets/portfolio/calendars.webp" alt="Настольный календарь, брошюры и карманный календарь Малина" width="1256" height="1256" loading="lazy"><figcaption><span>01</span><div><b>Календари и полиграфия</b><small>Дизайн, печать и сборка комплектов</small></div></figcaption></figure>
+          <figure class="work-card work-card-wide"><img src="assets/portfolio/client-qr-stand.jpg" alt="Настольная QR-стойка для спортивно-танцевального клуба" width="1280" height="1280" loading="lazy"><figcaption><span>01</span><div><b>QR-стойка для Art Dance</b><small>Акриловая конструкция с объёмными элементами</small></div></figcaption></figure>
           <figure class="work-card work-card-tall"><img src="assets/portfolio/display.webp" alt="Фирменная выставочная конструкция для винной продукции" width="1088" height="1456" loading="lazy"><figcaption><span>02</span><div><b>Выставочные конструкции</b><small>Оформление пространства под задачу</small></div></figcaption></figure>
           <figure class="work-card"><img src="assets/portfolio/award.webp" alt="Акриловая награда для школьной футбольной лиги" width="1256" height="1256" loading="lazy"><figcaption><span>03</span><div><b>Наградная продукция</b><small>Индивидуальная форма и печать</small></div></figcaption></figure>
           <figure class="work-card"><img src="assets/portfolio/caps.webp" alt="Синие и розовые бейсболки с фирменными шевронами" width="1256" height="1256" loading="lazy"><figcaption><span>04</span><div><b>Текстиль и мерч</b><small>Брендирование готовых изделий</small></div></figcaption></figure>
-          <figure class="work-card"><img src="assets/portfolio/souvenirs.webp" alt="Фирменные блокноты и термокружка с логотипом Малина" width="1256" height="1256" loading="lazy"><figcaption><span>05</span><div><b>Корпоративные сувениры</b><small>Единый стиль для разных носителей</small></div></figcaption></figure>
+          <figure class="work-card"><img src="assets/portfolio/client-car-branding.jpg" alt="Рекламная плёнка с контактами строительной компании на автомобиле" width="1280" height="1280" loading="lazy"><figcaption><span>05</span><div><b>Автомобиль для «Росстрой»</b><small>Макет и нанесение рекламной плёнки</small></div></figcaption></figure>
           <figure class="work-card"><img src="assets/portfolio/thermoses.webp" alt="Партия синих термосов с корпоративной печатью" width="1088" height="1456" loading="lazy"><figcaption><span>06</span><div><b>Брендированные подарки</b><small>Тиражи для компаний и мероприятий</small></div></figcaption></figure>
           <figure class="work-card"><img src="assets/portfolio/pens.webp" alt="Оранжевые ручки с нанесённой фирменной надписью" width="1256" height="1256" loading="lazy"><figcaption><span>07</span><div><b>Промопродукция</b><small>Нанесение на ручки и аксессуары</small></div></figcaption></figure>
-          <figure class="work-card work-card-wide"><img src="assets/portfolio/hero-studio.webp" alt="Фирменный комплект с календарём, блокнотом, сумкой и ручками" width="1456" height="1118" loading="lazy"><figcaption><span>08</span><div><b>Комплексные заказы</b><small>Несколько изделий в одном визуальном стиле</small></div></figcaption></figure>
+          <figure class="work-card work-card-wide"><img src="assets/portfolio/client-medical-guide.jpg" alt="Разворот медицинского методического пособия на пружине" width="1440" height="2560" loading="lazy"><figcaption><span>08</span><div><b>Методическое пособие</b><small>Вёрстка, цветная печать и пружинный переплёт</small></div></figcaption></figure>
+          <figure class="work-card"><img src="assets/portfolio/client-gift-certificate.jpg" alt="Подарочный сертификат инженерной компании в чёрном конверте" width="960" height="1280" loading="lazy"><figcaption><span>09</span><div><b>Подарочные сертификаты</b><small>Печать и упаковка для бизнеса</small></div></figcaption></figure>
         </div>
       </section>
 
@@ -87,7 +89,7 @@
         </ol>
       </section>
 
-      <section class="final-cta"><p class="section-label">Есть идея?</p><div><h2>Давайте сделаем<br><em>её заметной</em></h2><button class="cta-button" type="button" data-open-chat><span>Написать менеджеру</span><b aria-hidden="true">↗</b></button></div></section>
+      <section class="final-cta"><p class="section-label">Цена по запросу</p><div><h2>Давайте сделаем<br><em>её заметной</em></h2><button class="cta-button" type="button" data-open-chat aria-controls="manager-chat" aria-expanded="false"><span>Узнать цену в чате</span><b aria-hidden="true"><svg viewBox="0 0 24 24" focusable="false"><path d="M5 12h14M14 7l5 5-5 5"/></svg></b></button></div></section>
     </main>
 
     <footer>
@@ -97,17 +99,21 @@
     </footer>
 
     <div class="chat-widget" data-chat-widget>
-      <button class="chat-fab" type="button" data-open-chat aria-label="Открыть чат с менеджером"><span aria-hidden="true"></span></button>
-      <section class="chat-window" aria-label="Чат с менеджером Малины">
+      <button class="chat-fab" type="button" data-open-chat aria-label="Открыть чат с менеджером" aria-controls="manager-chat" aria-expanded="false"><span class="chat-fab-label">Написать нам</span><svg aria-hidden="true" viewBox="0 0 24 24"><path d="M7 18.5 3.5 21l1-4.5A8 8 0 1 1 7 18.5Z"/><path d="M8 11h.01M12 11h.01M16 11h.01"/></svg></button>
+      <section class="chat-window" id="manager-chat" aria-label="Чат с менеджером Малины" aria-hidden="true">
         <header>
           <div><strong>Менеджер Малины</strong><span>отвечает из Telegram</span></div>
-          <button type="button" data-close-chat aria-label="Закрыть чат">×</button>
+          <button class="chat-close" type="button" data-close-chat aria-label="Закрыть чат"><span aria-hidden="true"></span></button>
         </header>
+        <div class="chat-status" data-chat-status aria-live="polite" hidden></div>
         <div class="chat-body" data-chat-body aria-live="polite">
           <div class="bot-bubble">Здравствуйте! Заполните контакты и напишите, что нужно изготовить. Ответ менеджера появится прямо здесь.</div>
           <div class="contact-fields" data-contact-fields>
             <label><span>Имя</span><input data-client-name type="text" placeholder="Как к вам обращаться" autocomplete="name" required></label>
-            <label><span>Email</span><input data-client-email type="email" placeholder="name@example.ru" autocomplete="email" required></label>
+            <div class="contact-pair">
+              <label><span>Email</span><input data-client-email type="email" placeholder="name@example.ru" autocomplete="email"></label>
+              <label><span>Телефон</span><input data-client-phone type="tel" placeholder="+7 978 000-00-00" autocomplete="tel"></label>
+            </div>
             <label><span>Тема</span><select data-client-topic required>
               <option value="">Выберите направление</option>
               <option value="Полиграфия">Полиграфия</option>
@@ -118,6 +124,11 @@
               <option value="Дизайн">Дизайн</option>
               <option value="Другое">Другое</option>
             </select></label>
+            <div class="brief-fields">
+              <label><span>Тираж</span><input data-client-quantity type="text" placeholder="Например, 500 шт."></label>
+              <label><span>Город</span><input data-client-city type="text" placeholder="Куда доставить"></label>
+              <label class="brief-deadline"><span>Желаемый срок</span><input data-client-deadline type="text" placeholder="Например, до 15 сентября"></label>
+            </div>
           </div>
           <div class="choice-row" aria-label="Популярные темы">
             <button type="button" data-choice="Полиграфия">Полиграфия</button>
@@ -127,14 +138,15 @@
         </div>
         <form class="chat-form" data-chat-form>
           <input data-chat-message name="message" type="text" placeholder="Тираж, размер, срок или вопрос" autocomplete="off">
-          <input data-chat-file type="file" hidden>
-          <button class="attach-button" data-attach-file type="button" title="Прикрепить файл" aria-label="Прикрепить файл">＋</button>
+          <input data-chat-file type="file" accept=".pdf,.png,.jpg,.jpeg,.webp" multiple hidden>
+          <button class="attach-button" data-attach-file type="button" title="Прикрепить файл" aria-label="Прикрепить файл"><svg aria-hidden="true" viewBox="0 0 24 24"><path d="m9 12.5 5.9-5.9a3 3 0 1 1 4.2 4.2l-7.3 7.3a5 5 0 0 1-7.1-7.1l7.1-7.1"/></svg></button>
           <button data-send-message type="submit">Отправить</button>
           <span class="file-preview" data-file-preview hidden></span>
+          <button class="clear-file" data-clear-file type="button" hidden>Убрать файлы</button>
           <label class="chat-consent"><input data-chat-consent type="checkbox" required> <span>Даю согласие на обработку данных по <a href="privacy.html">политике конфиденциальности</a>.</span></label>
         </form>
       </section>
     </div>
-    <script src="script.js?v=20260817-3"></script>
+    <script src="script.js?v=20260817-9"></script>
   </body>
 </html>

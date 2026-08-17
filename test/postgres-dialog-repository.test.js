@@ -34,6 +34,8 @@ test("schema defines relational storage and queue indexes", () => {
   assert.match(schema, /REFERENCES dialogs\(id\) ON DELETE CASCADE/);
   assert.match(schema, /dialogs_queue_idx/);
   assert.match(schema, /messages_dialog_created_idx/);
+  assert.match(schema, /consent jsonb/);
+  assert.match(schema, /brief jsonb/);
 });
 
 test("saveStore commits clients, dialogs and messages in one checked-out transaction", async () => {

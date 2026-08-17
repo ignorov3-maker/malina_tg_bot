@@ -39,7 +39,7 @@ function createPostgresDialogRepository(options) {
     const [stateResult, dialogResult, messageResult] = await Promise.all([
       pool.query("SELECT value FROM app_state WHERE key = 'dialog_counter'"),
       pool.query(`
-        SELECT d.*, c.name AS client_name, c.email AS client_email
+        SELECT d.*, c.name AS client_name, c.email AS client_email, c.phone AS client_phone
         FROM dialogs d
         JOIN clients c ON c.id = d.client_id
         ORDER BY d.number
@@ -76,6 +76,7 @@ function createPostgresDialogRepository(options) {
       product: row.product,
       clientName: row.client_name,
       clientEmail: row.client_email,
+      clientPhone: row.client_phone,
       page: row.page,
       assignedManagerId: row.assigned_manager_id,
       assignedAt: asIso(row.assigned_at),
@@ -85,6 +86,8 @@ function createPostgresDialogRepository(options) {
       updatedAt: asIso(row.updated_at),
       lastClientAt: asIso(row.last_client_at),
       lastFinishReminderAt: asIso(row.last_finish_reminder_at),
+      consent: row.consent || {},
+      brief: row.brief || {},
       messages: messagesByDialog.get(row.id) || [],
       telegramMessages: row.telegram_messages || {}
     }));
@@ -116,12 +119,13 @@ function createPostgresDialogRepository(options) {
         const clientId = clientIdForSession(dialog.sessionId);
         await client.query(
           `
-            INSERT INTO clients (id, session_id, name, email, created_at, updated_at)
-            VALUES ($1, $2, $3, $4, $5, $6)
+            INSERT INTO clients (id, session_id, name, email, phone, created_at, updated_at)
+            VALUES ($1, $2, $3, $4, $5, $6, $7)
             ON CONFLICT (session_id)
             DO UPDATE SET
               name = EXCLUDED.name,
               email = EXCLUDED.email,
+              phone = EXCLUDED.phone,
               updated_at = EXCLUDED.updated_at
           `,
           [
@@ -129,6 +133,7 @@ function createPostgresDialogRepository(options) {
             dialog.sessionId,
             dialog.clientName || "",
             dialog.clientEmail || "",
+            dialog.clientPhone || "",
             asNullableDate(dialog.createdAt) || new Date(),
             asNullableDate(dialog.updatedAt) || new Date()
           ]
@@ -138,11 +143,11 @@ function createPostgresDialogRepository(options) {
             INSERT INTO dialogs (
               id, number, client_id, session_id, status, topic, product, page,
               assigned_manager_id, assigned_at, queued_at, closed_at, created_at,
-              updated_at, last_client_at, last_finish_reminder_at, telegram_messages
+              updated_at, last_client_at, last_finish_reminder_at, consent, brief, telegram_messages
             )
             VALUES (
               $1, $2, $3, $4, $5, $6, $7, $8,
-              $9, $10, $11, $12, $13, $14, $15, $16, $17::jsonb
+              $9, $10, $11, $12, $13, $14, $15, $16, $17::jsonb, $18::jsonb, $19::jsonb
             )
             ON CONFLICT (id)
             DO UPDATE SET
@@ -160,6 +165,8 @@ function createPostgresDialogRepository(options) {
               updated_at = EXCLUDED.updated_at,
               last_client_at = EXCLUDED.last_client_at,
               last_finish_reminder_at = EXCLUDED.last_finish_reminder_at,
+              consent = EXCLUDED.consent,
+              brief = EXCLUDED.brief,
               telegram_messages = EXCLUDED.telegram_messages
           `,
           [
@@ -179,6 +186,8 @@ function createPostgresDialogRepository(options) {
             asNullableDate(dialog.updatedAt) || new Date(),
             asNullableDate(dialog.lastClientAt),
             asNullableDate(dialog.lastFinishReminderAt),
+            JSON.stringify(dialog.consent || {}),
+            JSON.stringify(dialog.brief || {}),
             JSON.stringify(dialog.telegramMessages || {})
           ]
         );

@@ -7,18 +7,12 @@ const attachButton = form.querySelector("[data-attach-file]");
 const filePreview = form.querySelector("[data-file-preview]");
 const clearFileButton = form.querySelector("[data-clear-file]");
 const submitButton = form.querySelector("[data-send-message]");
-const consentInput = form.querySelector("[data-chat-consent]");
 const statusElement = document.querySelector("[data-chat-status]");
 const chatWindow = document.querySelector(".chat-window");
 const openChatButtons = [...document.querySelectorAll("[data-open-chat]")];
 const contactFields = document.querySelector("[data-contact-fields]");
 const nameInput = document.querySelector("[data-client-name]");
-const emailInput = document.querySelector("[data-client-email]");
-const phoneInput = document.querySelector("[data-client-phone]");
-const topicInput = document.querySelector("[data-client-topic]");
-const quantityInput = document.querySelector("[data-client-quantity]");
-const cityInput = document.querySelector("[data-client-city]");
-const deadlineInput = document.querySelector("[data-client-deadline]");
+const contactInput = document.querySelector("[data-client-contact]");
 
 const sessionKey = "malina-chat-session";
 const dialogKey = "malina-chat-dialog";
@@ -112,29 +106,26 @@ const setFormDisabled = (disabled) => {
   attachButton.disabled = disabled;
   clearFileButton.disabled = disabled;
   submitButton.disabled = disabled;
-  consentInput.disabled = disabled;
 };
 
 const setContactDisabled = (disabled) => {
   nameInput.disabled = disabled;
-  emailInput.disabled = disabled;
-  phoneInput.disabled = disabled;
-  topicInput.disabled = disabled;
-  quantityInput.disabled = disabled;
-  cityInput.disabled = disabled;
-  deadlineInput.disabled = disabled;
+  contactInput.disabled = disabled;
   contactFields.classList.toggle("is-locked", disabled);
 };
 
-const getContact = () => ({
-  name: nameInput.value.trim(),
-  email: emailInput.value.trim(),
-  phone: phoneInput.value.trim(),
-  topic: topicInput.value.trim(),
-  quantity: quantityInput.value.trim(),
-  city: cityInput.value.trim(),
-  deadline: deadlineInput.value.trim()
-});
+const getContact = () => {
+  const replyTo = contactInput.value.trim();
+  return {
+    name: nameInput.value.trim(),
+    email: replyTo.includes("@") ? replyTo : "",
+    phone: replyTo && !replyTo.includes("@") ? replyTo : "",
+    topic: document.querySelector("[data-choice].is-selected")?.dataset.choice || "Другое",
+    quantity: "",
+    city: "",
+    deadline: ""
+  };
+};
 
 const isEmail = (value) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
 const isPhone = (value) => value.replace(/\D/g, "").length >= 10;
@@ -156,7 +147,7 @@ const showFieldError = (field, message) => {
   field.scrollIntoView({ block: "nearest" });
 };
 
-[nameInput, emailInput, phoneInput, topicInput].forEach((field) => {
+[nameInput, contactInput].forEach((field) => {
   field.addEventListener("input", () => clearFieldError(field));
   field.addEventListener("change", () => clearFieldError(field));
 });
@@ -166,21 +157,10 @@ const validateStartFields = () => {
 
   const contact = getContact();
 
-  [nameInput, emailInput, phoneInput, topicInput].forEach(clearFieldError);
+  [nameInput, contactInput].forEach(clearFieldError);
 
-  if (!contact.name) {
-    showFieldError(nameInput, "Укажите имя, чтобы менеджер знал, как к вам обращаться.");
-    return false;
-  }
-
-  if (!isEmail(contact.email) && !isPhone(contact.phone)) {
-    const target = contact.email ? emailInput : phoneInput;
-    showFieldError(target, "Укажите корректный email или телефон.");
-    return false;
-  }
-
-  if (!contact.topic) {
-    showFieldError(topicInput, "Выберите направление обращения.");
+  if (contactInput.value.trim() && !isEmail(contact.email) && !isPhone(contact.phone)) {
+    showFieldError(contactInput, "Проверьте телефон или e-mail либо оставьте поле пустым.");
     return false;
   }
 
@@ -305,15 +285,10 @@ const resetForNewDialog = () => {
   setFormDisabled(false);
   setContactDisabled(false);
   nameInput.value = "";
-  emailInput.value = "";
-  phoneInput.value = "";
-  topicInput.value = "";
-  quantityInput.value = "";
-  cityInput.value = "";
-  deadlineInput.value = "";
-  consentInput.checked = false;
-  addBubble("Новый диалог начат. Заполните контакты и напишите сообщение.");
-  nameInput.focus();
+  contactInput.value = "";
+  document.querySelectorAll("[data-choice]").forEach((button) => button.classList.remove("is-selected"));
+  addBubble("Новый диалог начат. Напишите сообщение — контакты можно не указывать.");
+  input.focus();
 };
 
 const showDialogClosed = (data) => {
@@ -355,7 +330,7 @@ const sendClientMessage = async (message, attachments = []) => {
       message,
       attachments,
       consent: {
-        accepted: consentInput.checked,
+        accepted: true,
         version: consentVersion,
         acceptedAt: new Date().toISOString()
       },
@@ -441,9 +416,10 @@ document.addEventListener("keydown", (event) => {
 
 document.querySelectorAll("[data-choice]").forEach((button) => {
   button.addEventListener("click", () => {
-    topicInput.value = button.dataset.choice;
+    document.querySelectorAll("[data-choice]").forEach((choice) => choice.classList.remove("is-selected"));
+    button.classList.add("is-selected");
     addBubble(button.dataset.choice, "user");
-    botReply("Отлично. Теперь укажите имя, телефон или email и добавьте детали заказа.");
+    botReply("Выбрано. Теперь напишите детали заказа.");
   });
 });
 
@@ -498,17 +474,10 @@ form.addEventListener("submit", async (event) => {
 
 const savedContact = getSavedContact();
 
-if (activeDialogId && savedContact.name && (savedContact.email || savedContact.phone) && savedContact.topic) {
-  nameInput.value = savedContact.name;
-  emailInput.value = savedContact.email || "";
-  phoneInput.value = savedContact.phone || "";
-  topicInput.value = savedContact.topic;
-  quantityInput.value = savedContact.quantity || "";
-  cityInput.value = savedContact.city || "";
-  deadlineInput.value = savedContact.deadline || "";
-  consentInput.checked = true;
+if (activeDialogId) {
+  nameInput.value = savedContact.name || "";
+  contactInput.value = savedContact.email || savedContact.phone || "";
+  const savedChoice = [...document.querySelectorAll("[data-choice]")].find((button) => button.dataset.choice === savedContact.topic);
+  savedChoice?.classList.add("is-selected");
   setContactDisabled(true);
-} else if (activeDialogId) {
-  clearSavedDialog();
-  setContactDisabled(false);
 }

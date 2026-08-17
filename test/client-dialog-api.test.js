@@ -64,9 +64,6 @@ test("creates a dialog and exposes a client-safe status endpoint", async () => {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         sessionId: "browser-test-session",
-        clientName: "Тестовый клиент",
-        clientPhone: "+7 978 123-45-67",
-        topic: "Пакеты",
         message: "Нужен расчёт тиража",
         page: "/",
         brief: { quantity: "500 шт.", city: "Севастополь", deadline: "до пятницы" },
@@ -123,7 +120,9 @@ test("creates a dialog and exposes a client-safe status endpoint", async () => {
     assert.equal(stored.leads[0].consent.version, "2026-08-17");
     assert.equal(stored.leads[0].brief.quantity, "500 шт.");
     assert.equal(stored.leads[0].brief.city, "Севастополь");
-    assert.equal(stored.leads[0].clientPhone, "+7 978 123-45-67");
+    assert.equal(stored.leads[0].clientName, "");
+    assert.equal(stored.leads[0].clientPhone, "");
+    assert.equal(stored.leads[0].topic, "Не выбрана");
   } finally {
     child.kill();
     fs.rmSync(storageRoot, { recursive: true, force: true });

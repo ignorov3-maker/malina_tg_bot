@@ -174,13 +174,6 @@ async function handleClientMessage(request, response) {
       (dialog.id === requestedDialogId || dialog.sessionId === sessionId)
   );
 
-  if (!hasOpenDialog && (!clientName || (!clientEmail && !clientPhone) || !rawTopic)) {
-    return sendJson(response, 400, {
-      ok: false,
-      message: "Для начала диалога нужно указать имя, email или телефон и тему"
-    });
-  }
-
   if (!hasOpenDialog && consent.accepted !== true) {
     return sendJson(response, 400, {
       ok: false,

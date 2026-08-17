@@ -10,6 +10,7 @@ on:
       - script.js
       - privacy.html
       - photo-brief.html
+      - assets/**
       - .github/workflows/pages.yml
 
 permissions:
@@ -34,6 +35,7 @@ jobs:
         run: |
           mkdir _site
           cp index.html styles.css script.js privacy.html photo-brief.html _site/
+          cp -R assets _site/
       - uses: actions/upload-pages-artifact@v3
         with:
           path: _site

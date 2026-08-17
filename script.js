@@ -39,6 +39,21 @@ let pollTimer = null;
 let dialogClosed = false;
 let lastChatTrigger = null;
 
+const updateVisualViewport = () => {
+  const viewport = window.visualViewport;
+  const viewportHeight = viewport?.height || window.innerHeight;
+  const viewportOffset = viewport?.offsetTop || 0;
+  const keyboardInset = Math.max(0, window.innerHeight - viewportHeight - viewportOffset);
+
+  document.documentElement.style.setProperty("--visual-viewport-height", `${viewportHeight}px`);
+  document.documentElement.style.setProperty("--visual-viewport-bottom", `${keyboardInset}px`);
+};
+
+updateVisualViewport();
+window.visualViewport?.addEventListener("resize", updateVisualViewport);
+window.visualViewport?.addEventListener("scroll", updateVisualViewport);
+window.addEventListener("orientationchange", updateVisualViewport);
+
 const getSavedContact = () => {
   try {
     return JSON.parse(localStorage.getItem(contactKey) || "{}");
@@ -71,11 +86,15 @@ const clearSavedDialog = () => {
 };
 
 const openChat = (event) => {
+  updateVisualViewport();
   lastChatTrigger = event?.currentTarget || document.activeElement;
   widget.classList.add("is-open");
   chatWindow.setAttribute("aria-hidden", "false");
   openChatButtons.forEach((button) => button.setAttribute("aria-expanded", "true"));
-  (activeDialogId ? input : nameInput).focus();
+  const canUseAutoFocus = window.matchMedia("(min-width: 651px) and (pointer: fine)").matches;
+  if (canUseAutoFocus) {
+    (activeDialogId ? input : nameInput).focus({ preventScroll: true });
+  }
   startPolling();
 };
 

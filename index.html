@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="theme-color" content="#f6f2ea">
     <meta name="referrer" content="no-referrer">
-    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; img-src 'self' data:; style-src 'self'; script-src 'self'; connect-src 'none'; font-src 'self'; object-src 'none'; frame-src 'none'; base-uri 'self'; form-action 'none'">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; img-src 'self' data:; style-src 'self'; script-src 'self'; connect-src 'self'; font-src 'self'; object-src 'none'; frame-src 'none'; base-uri 'self'; form-action 'self'">
     <title>Малина — печать, реклама и брендирование</title>
     <meta name="description" content="Полиграфия, наружная реклама, упаковка, сувениры и текстиль. Дизайн и производство в одном месте. Цена по запросу.">
     <link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
@@ -21,7 +21,7 @@
       <nav class="nav" aria-label="Основная навигация">
         <a href="#services">Услуги</a><a href="#portfolio">Работы</a><a href="#process">Процесс</a>
       </nav>
-      <button class="pill-button" type="button" data-open-brief>Обсудить задачу <span aria-hidden="true">↗</span></button>
+      <button class="pill-button" type="button" data-open-chat>Обсудить задачу <span aria-hidden="true">↗</span></button>
     </header>
 
     <main id="content">
@@ -31,7 +31,7 @@
           <h1>Идеи обретают <em>форму</em></h1>
           <p class="hero-lead">От визитки до оформления пространства. Разрабатываем дизайн, печатаем, брендируем и собираем готовое решение для бизнеса.</p>
           <div class="hero-actions">
-            <button class="primary-button" type="button" data-open-brief>Запросить расчёт <span aria-hidden="true">↗</span></button>
+            <button class="primary-button" type="button" data-open-chat>Запросить расчёт <span aria-hidden="true">↗</span></button>
             <a class="underlined-link" href="#services">Смотреть услуги <span aria-hidden="true">↓</span></a>
           </div>
           <ul class="hero-notes" aria-label="Преимущества"><li>Дизайн и производство</li><li>Малые и большие тиражи</li><li>Цена по запросу</li></ul>
@@ -87,7 +87,7 @@
         </ol>
       </section>
 
-      <section class="final-cta"><p class="section-label">Есть идея?</p><div><h2>Давайте сделаем<br><em>её заметной</em></h2><button class="cta-button" type="button" data-open-brief><span>Подготовить запрос</span><b aria-hidden="true">↗</b></button></div></section>
+      <section class="final-cta"><p class="section-label">Есть идея?</p><div><h2>Давайте сделаем<br><em>её заметной</em></h2><button class="cta-button" type="button" data-open-chat><span>Написать менеджеру</span><b aria-hidden="true">↗</b></button></div></section>
     </main>
 
     <footer>
@@ -96,14 +96,45 @@
       <small>© 2026 Малина · типография полного цикла</small>
     </footer>
 
-    <dialog class="brief-dialog" data-brief-dialog aria-labelledby="brief-title">
-      <button class="dialog-close" type="button" data-close-brief aria-label="Закрыть">×</button>
-      <p class="section-label">Связаться с нами</p>
-      <h2 id="brief-title">Обсудим<br>ваш заказ</h2>
-      <p>Напишите в Telegram или свяжитесь удобным способом. Для расчёта подготовьте четыре пункта:</p>
-      <ol><li><span>01</span> Вид продукции и назначение</li><li><span>02</span> Размер, материал и количество</li><li><span>03</span> Макет или помощь дизайнера</li><li><span>04</span> Желаемый срок и способ получения</li></ol>
-      <div class="contact-actions"><a class="primary-button" href="https://t.me/malinaprinting_bot" target="_blank" rel="noopener">Открыть Telegram <span aria-hidden="true">↗</span></a><a class="contact-link" href="tel:+79788443226">Позвонить: +7 (978) 844-32-26</a><a class="contact-link" href="mailto:tipo.malina@mail.ru">Написать на почту</a></div>
-    </dialog>
-    <script src="script.js?v=20260817-2"></script>
+    <div class="chat-widget" data-chat-widget>
+      <button class="chat-fab" type="button" data-open-chat aria-label="Открыть чат с менеджером"><span aria-hidden="true"></span></button>
+      <section class="chat-window" aria-label="Чат с менеджером Малины">
+        <header>
+          <div><strong>Менеджер Малины</strong><span>отвечает из Telegram</span></div>
+          <button type="button" data-close-chat aria-label="Закрыть чат">×</button>
+        </header>
+        <div class="chat-body" data-chat-body aria-live="polite">
+          <div class="bot-bubble">Здравствуйте! Заполните контакты и напишите, что нужно изготовить. Ответ менеджера появится прямо здесь.</div>
+          <div class="contact-fields" data-contact-fields>
+            <label><span>Имя</span><input data-client-name type="text" placeholder="Как к вам обращаться" autocomplete="name" required></label>
+            <label><span>Email</span><input data-client-email type="email" placeholder="name@example.ru" autocomplete="email" required></label>
+            <label><span>Тема</span><select data-client-topic required>
+              <option value="">Выберите направление</option>
+              <option value="Полиграфия">Полиграфия</option>
+              <option value="Наружная реклама">Наружная реклама</option>
+              <option value="Упаковка и этикетка">Упаковка и этикетка</option>
+              <option value="Сувениры">Сувениры</option>
+              <option value="Текстиль и мерч">Текстиль и мерч</option>
+              <option value="Дизайн">Дизайн</option>
+              <option value="Другое">Другое</option>
+            </select></label>
+          </div>
+          <div class="choice-row" aria-label="Популярные темы">
+            <button type="button" data-choice="Полиграфия">Полиграфия</button>
+            <button type="button" data-choice="Наружная реклама">Реклама</button>
+            <button type="button" data-choice="Сувениры">Сувениры</button>
+          </div>
+        </div>
+        <form class="chat-form" data-chat-form>
+          <input data-chat-message name="message" type="text" placeholder="Тираж, размер, срок или вопрос" autocomplete="off">
+          <input data-chat-file type="file" hidden>
+          <button class="attach-button" data-attach-file type="button" title="Прикрепить файл" aria-label="Прикрепить файл">＋</button>
+          <button data-send-message type="submit">Отправить</button>
+          <span class="file-preview" data-file-preview hidden></span>
+          <label class="chat-consent"><input data-chat-consent type="checkbox" required> <span>Даю согласие на обработку данных по <a href="privacy.html">политике конфиденциальности</a>.</span></label>
+        </form>
+      </section>
+    </div>
+    <script src="script.js?v=20260817-3"></script>
   </body>
 </html>

@@ -31,12 +31,18 @@ const databaseRequired = process.env.DATABASE_REQUIRED === "true";
 const databaseSsl = process.env.DATABASE_SSL === "true";
 const databaseSslRejectUnauthorized = process.env.DATABASE_SSL_REJECT_UNAUTHORIZED !== "false";
 const databasePoolSize = Number(process.env.DATABASE_POOL_SIZE || 10);
-const publicFiles = new Set(["/index.html", "/styles.css", "/script.js"]);
+const publicFiles = new Set(["/index.html", "/styles.css", "/script.js", "/privacy.html", "/photo-brief.html"]);
 const mimeTypes = {
   ".html": "text/html; charset=utf-8",
   ".css": "text/css; charset=utf-8",
   ".js": "text/javascript; charset=utf-8",
-  ".json": "application/json; charset=utf-8"
+  ".json": "application/json; charset=utf-8",
+  ".svg": "image/svg+xml",
+  ".webp": "image/webp",
+  ".png": "image/png",
+  ".jpg": "image/jpeg",
+  ".jpeg": "image/jpeg",
+  ".ico": "image/x-icon"
 };
 
 let telegramOffset = 0;
@@ -1208,14 +1214,11 @@ function normalizeDialog(dialog) {
 
 function serveStatic(urlPath, response) {
   const safePath = urlPath === "/" ? "/index.html" : decodeURIComponent(urlPath);
+  const filePath = path.resolve(root, safePath.replace(/^\/+/, ""));
+  const assetsRoot = `${path.resolve(root, "assets")}${path.sep}`;
+  const allowedAsset = filePath.startsWith(assetsRoot);
 
-  if (!publicFiles.has(safePath)) {
-    return sendText(response, 404, "Not found");
-  }
-
-  const filePath = path.normalize(path.join(root, safePath));
-
-  if (!filePath.startsWith(root)) {
+  if ((!publicFiles.has(safePath) && !allowedAsset) || !filePath.startsWith(root)) {
     return sendText(response, 403, "Forbidden");
   }
 
@@ -1225,7 +1228,10 @@ function serveStatic(urlPath, response) {
     }
 
     const ext = path.extname(filePath).toLowerCase();
-    response.writeHead(200, { "Content-Type": mimeTypes[ext] || "application/octet-stream" });
+    response.writeHead(200, {
+      "Content-Type": mimeTypes[ext] || "application/octet-stream",
+      "Cache-Control": allowedAsset ? "public, max-age=31536000, immutable" : "no-cache"
+    });
     response.end(content);
   });
 }

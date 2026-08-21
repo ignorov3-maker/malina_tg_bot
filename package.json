@@ -1,15 +1,11 @@
 {
-  "name": "malina-landing-chat",
-  "version": "0.1.0",
+  "name": "malina-static-site",
+  "version": "1.0.0",
   "private": true,
-  "description": "Landing page and Telegram chat prototype for Malina typography.",
+  "description": "Static informational website for Malina typography.",
   "scripts": {
-    "start": "node server.js",
-    "check": "node --check server.js && node --check script.js && node --check src/client-dialog-status.js && node --check src/postgres-dialog-repository.js",
-    "test": "node --test"
-  },
-  "dependencies": {
-    "pg": "^8.22.0"
+    "check": "node --test test/static-site.test.js",
+    "test": "node --test test/static-site.test.js"
   },
   "engines": {
     "node": ">=20"

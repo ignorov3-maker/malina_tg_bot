@@ -9,6 +9,7 @@ on:
       - styles.css
       - privacy.html
       - references.html
+      - gallery.js
       - assets/**
       - .github/workflows/pages.yml
 
@@ -33,7 +34,7 @@ jobs:
       - name: Prepare static preview
         run: |
           mkdir _site
-          cp index.html styles.css privacy.html references.html _site/
+          cp index.html styles.css privacy.html references.html gallery.js _site/
           cp -R assets _site/
       - uses: actions/upload-pages-artifact@v3
         with:

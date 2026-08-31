@@ -37,7 +37,9 @@ test("VK and MAX contacts are external, privacy-preserving links", () => {
 test("references page lists every local reference image", () => {
   const links = [...references.matchAll(/assets\/references\/(reference-\d{2}\.jpg)/g)];
   const unique = new Set(links.map(([, name]) => name));
-  assert.equal(unique.size, 51);
+  assert.equal(unique.size, 49);
+  assert.ok(!unique.has("reference-23.jpg"));
+  assert.ok(!unique.has("reference-25.jpg"));
   for (const name of unique) {
     assert.ok(fs.existsSync(path.join(root, "assets", "references", name)), `${name} is missing`);
   }

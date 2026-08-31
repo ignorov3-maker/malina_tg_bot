@@ -143,8 +143,8 @@ h1 em, .final-cta em { color: var(--berry); font-family: Georgia, serif; font-we
 .social-button:hover, .social-button:focus-visible { box-shadow: 0 22px 48px rgba(34,9,58,.34); filter: saturate(1.08) brightness(1.04); transform: translateY(-3px); }
 .social-vk { background: linear-gradient(135deg, #0077ff 0%, #2688eb 58%, #1769d2 100%); }
 .social-max { background: linear-gradient(135deg, #471aff 0%, #6e1aff 48%, #9500ff 100%); }
-.social-mark { display: grid; width: 54px; height: 54px; place-items: center; color: white; background: rgba(255,255,255,.16); border: 1px solid rgba(255,255,255,.42); border-radius: 15px; box-shadow: inset 0 1px 0 rgba(255,255,255,.18); font-size: 18px; font-weight: 900; letter-spacing: -.04em; }
-.social-vk .social-mark, .social-max .social-mark { color: white; background: rgba(13,0,26,.16); }.social-mark-max { font-size: 13px; letter-spacing: .02em; }
+.social-mark { display: grid; width: 54px; height: 54px; place-items: center; background: rgba(255,255,255,.96); border: 1px solid rgba(255,255,255,.68); border-radius: 15px; box-shadow: 0 5px 16px rgba(13,0,26,.15), inset 0 1px 0 white; }
+.social-mark img { display: block; width: 40px; height: 40px; object-fit: contain; }.social-vk .social-mark img { width: 42px; height: 42px; }.social-mark-max img { width: 39px; height: 39px; }
 .social-button > span:nth-child(2) { display: grid; gap: 4px; }.social-button strong { font-size: 19px; }.social-button small { opacity: .76; font-size: 12px; }
 .social-button > b { display: grid; width: 34px; height: 34px; place-items: center; border: 1px solid currentColor; border-radius: 50%; font-size: 18px; font-weight: 400; }
 

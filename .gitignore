@@ -1,11 +1,4 @@
 .env
-data/
-uploads/
-managers.json
-pending-managers.json
 node_modules/
-practice_assignments/
-.storage/
 logs/
-.tools/
 .tmp-*/

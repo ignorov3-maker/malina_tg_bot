@@ -7,9 +7,8 @@ on:
     paths:
       - index.html
       - styles.css
-      - script.js
       - privacy.html
-      - photo-brief.html
+      - references.html
       - assets/**
       - .github/workflows/pages.yml
 
@@ -34,7 +33,7 @@ jobs:
       - name: Prepare static preview
         run: |
           mkdir _site
-          cp index.html styles.css script.js privacy.html photo-brief.html _site/
+          cp index.html styles.css privacy.html references.html _site/
           cp -R assets _site/
       - uses: actions/upload-pages-artifact@v3
         with:

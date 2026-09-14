@@ -144,7 +144,7 @@ h1 em, .final-cta em { color: var(--berry); font-family: Georgia, serif; font-we
 .social-vk { background: linear-gradient(135deg, #0077ff 0%, #2688eb 58%, #1769d2 100%); }
 .social-max { background: linear-gradient(135deg, #471aff 0%, #6e1aff 48%, #9500ff 100%); }
 .social-mark { display: grid; width: 50px; height: 50px; place-items: center; background: transparent; border: 0; box-shadow: none; }
-.social-mark img { position: relative; z-index: 1; display: block; width: 48px; height: 48px; object-fit: contain; }.social-vk .social-mark img { width: 48px; height: 48px; }.social-mark-max { position: relative; }.social-mark-max::before { position: absolute; width: 27px; height: 27px; content: ""; background: white; border-radius: 50%; }.social-mark-max img { width: 47px; height: 47px; }
+.social-mark img { display: block; width: 48px; height: 48px; object-fit: contain; }.social-vk .social-mark img { width: 48px; height: 48px; }.social-mark-max img { width: 47px; height: 47px; }
 .social-button > span:nth-child(2) { display: grid; gap: 4px; }.social-button strong { font-size: 19px; }.social-button small { opacity: .76; font-size: 12px; }
 
 footer { display: grid; grid-template-columns: 1fr 1.2fr .8fr; gap: 35px; align-items: end; padding: 52px clamp(18px, 5vw, 80px); color: white; background: #171717; }

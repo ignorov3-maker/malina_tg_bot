@@ -15,7 +15,10 @@ test("site contains no data-entry or submission mechanisms", () => {
   assert.doesNotMatch(html, /<form\b/i);
   assert.doesNotMatch(html, /<(?:input|textarea|select)\b/i);
   assert.doesNotMatch(`${html}\n${galleryScript}`, /\b(?:fetch|XMLHttpRequest|WebSocket|sendBeacon|localStorage|sessionStorage)\b/i);
-  assert.doesNotMatch(html, /href="(?:mailto|tel):/i);
+  assert.match(index, /href="mailto:tipo\.malina@mail\.ru"/i);
+  assert.match(index, /href="https:\/\/yandex\.ru\/maps\/959\/sevastopol\/house\/ulitsa_borisova_1_7\/Z0oYcgNjS0wHQFpufXl5dH5qZA==\/"/i);
+  assert.doesNotMatch(html, /href="tel:/i);
+  assert.doesNotMatch(`${index}\n${references}`, /\+7\s*\(\d{3}\)|09:00|18:00/i);
   assert.doesNotMatch(index, /<script\b/i);
   assert.doesNotMatch(privacy, /<script\b/i);
   assert.match(references, /<script\s+src="gallery\.js[^\"]*"\s+defer><\/script>/i);
@@ -26,8 +29,22 @@ test("site contains no analytics or embedded third-party content", () => {
   assert.doesNotMatch(html, /(?:metrika|analytics|googletagmanager|gtag\s*\(|ym\s*\(|pixel)/i);
 });
 
-test("VK and MAX contacts are external, privacy-preserving links", () => {
-  for (const host of ["vk.com", "max.ru"]) {
+test("privacy policy matches the actual operator and site configuration", () => {
+  assert.match(privacy, /ИП Романовская Светлана Евгеньевна/);
+  assert.match(privacy, /ИНН[\s\S]*643890704502/);
+  assert.match(privacy, /GitHub Pages/);
+  assert.match(privacy, /на сайте нет форм, личного кабинета, встроенного чата/i);
+  assert.doesNotMatch(privacy, /Пузин|tipografiakrd|Onicon|LiveInternet|Яндекс\.Метрик|Google Analytics|регистрац|форма заявки/i);
+});
+
+test("public wording presents the image collection as completed work", () => {
+  assert.match(index, /Смотреть всю галерею/);
+  assert.match(references, /Галерея работ/);
+  assert.doesNotMatch(`${index}\n${references}`, /референс/i);
+});
+
+test("VK, MAX and map contacts are external, privacy-preserving links", () => {
+  for (const host of ["vk.ru", "max.ru", "yandex.ru"]) {
     const links = [...index.matchAll(new RegExp(`<a\\b[^>]*href="https:\\/\\/${host.replace(".", "\\.")}[^\"]*"[^>]*>`, "gi"))];
     assert.ok(links.length >= 1, `${host} contact link is missing`);
     for (const [link] of links) {

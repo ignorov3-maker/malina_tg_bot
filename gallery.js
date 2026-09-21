@@ -19,7 +19,7 @@
     currentIndex = (index + cards.length) % cards.length;
     const cardImage = cards[currentIndex].querySelector("img");
     image.src = cards[currentIndex].href;
-    image.alt = cardImage?.alt || `Референс ${currentIndex + 1}`;
+    image.alt = cardImage?.alt || `Работа ${currentIndex + 1}`;
     counter.textContent = `${currentIndex + 1} / ${cards.length}`;
 
     const preload = (offset) => {

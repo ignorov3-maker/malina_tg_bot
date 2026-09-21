@@ -1,0 +1,13 @@
+.git
+.github
+.agents
+.codex
+node_modules
+test
+tools
+legal-docs
+legal-drafts
+*.md
+photo-brief.html
+package.json
+pnpm-lock.yaml

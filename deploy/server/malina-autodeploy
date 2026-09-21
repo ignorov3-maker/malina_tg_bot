@@ -1,0 +1,38 @@
+#!/bin/sh
+set -eu
+
+: "${REPO_URL:?REPO_URL is required}"
+: "${BRANCH:?BRANCH is required}"
+: "${WEBHOOK_URL:?WEBHOOK_URL is required}"
+
+state_dir="/var/lib/malina-autodeploy"
+state_file="$state_dir/last-sha"
+
+mkdir -p "$state_dir"
+
+remote_sha="$(git ls-remote --exit-code "$REPO_URL" "refs/heads/$BRANCH" | awk 'NR == 1 { print $1 }')"
+test -n "$remote_sha"
+
+last_sha=""
+if test -f "$state_file"; then
+    last_sha="$(sed -n '1p' "$state_file")"
+fi
+
+if test "$remote_sha" = "$last_sha"; then
+    exit 0
+fi
+
+payload="$(printf '{"ref":"refs/heads/%s","after":"%s","head_commit":{"message":"Automatic deployment of %s"},"repository":{"name":"malina_tg_bot","full_name":"ignorov3-maker/malina_tg_bot"}}' "$BRANCH" "$remote_sha" "$remote_sha")"
+
+curl \
+    --fail \
+    --silent \
+    --show-error \
+    --max-time 30 \
+    --request POST \
+    --header 'Content-Type: application/json' \
+    --header 'X-GitHub-Event: push' \
+    --data "$payload" \
+    "$WEBHOOK_URL" >/dev/null
+printf '%s\n' "$remote_sha" > "$state_file"
+logger -t malina-autodeploy "Triggered deployment for $BRANCH at $remote_sha"

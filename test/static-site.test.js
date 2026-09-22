@@ -86,6 +86,22 @@ test("references page lists every local reference image", () => {
   assert.match(galleryScript, /touchend/);
 });
 
+test("featured work cards open the exact image in the gallery", () => {
+  const workLinks = [...index.matchAll(/class="work-card-link"[^>]*href="references\.html\?work=([^"]+)"/g)];
+  assert.equal(workLinks.length, 10);
+  for (const [, slug] of workLinks) {
+    assert.match(galleryScript, new RegExp(`slug: "${slug}"`));
+  }
+  assert.match(galleryScript, /URLSearchParams\(window\.location\.search\)/);
+  assert.match(galleryScript, /open\(featuredItems, requestedIndex\)/);
+});
+
+test("gallery controls avoid iPhone double-tap zoom", () => {
+  assert.match(galleryScript, /touchend[\s\S]*passive:\s*false/);
+  assert.match(galleryScript, /event\.preventDefault\(\)/);
+  assert.match(fs.readFileSync(path.join(root, "styles.css"), "utf8"), /\.lightbox-close,[\s\S]*touch-action:\s*manipulation/);
+});
+
 test("external links use safe new-window attributes", () => {
   const links = [...html.matchAll(/<a\b[^>]*href="https:\/\/[^\"]+"[^>]*>/gi)];
   for (const [link] of links) {

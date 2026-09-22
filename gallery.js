@@ -11,26 +11,44 @@
 
   if (!cards.length || !dialog || !image || !counter) return;
 
+  const galleryItems = cards.map((card, index) => ({
+    src: card.href,
+    alt: card.querySelector("img")?.alt || `Работа ${index + 1}`,
+  }));
+  const featuredItems = [
+    { slug: "display", src: "assets/portfolio/display.webp", alt: "Фирменная выставочная конструкция для винной продукции" },
+    { slug: "award", src: "assets/portfolio/award.webp", alt: "Акриловая награда для школьной футбольной лиги" },
+    { slug: "caps", src: "assets/portfolio/caps.webp", alt: "Синие и розовые бейсболки с фирменными шевронами" },
+    { slug: "thermoses", src: "assets/portfolio/thermoses.webp", alt: "Партия синих термосов с корпоративной печатью" },
+    { slug: "pens", src: "assets/portfolio/pens.webp", alt: "Оранжевые ручки с нанесённой фирменной надписью" },
+    { slug: "gift-certificate", src: "assets/portfolio/client-gift-certificate.jpg", alt: "Подарочный сертификат инженерной компании в чёрном конверте" },
+    { slug: "calendars", src: "assets/portfolio/calendars.webp", alt: "Настольный календарь, брошюры и карманный календарь типографии Малина" },
+    { slug: "presentation-set", src: "assets/portfolio/city-presentation-set.jpg", alt: "Календарь, ежедневник, сумка и ручки с символикой Севастополя" },
+    { slug: "stationery", src: "assets/portfolio/branded-stationery.jpg", alt: "Красные ежедневники и термокружка с фирменным персонажем Малины" },
+    { slug: "notebooks", src: "assets/portfolio/custom-notebooks.jpg", alt: "Блокноты с индивидуальными логотипами двух брендов" },
+  ].map((item) => ({ ...item, src: new URL(item.src, document.baseURI).href }));
+
+  let items = galleryItems;
   let currentIndex = 0;
   let touchStartX = 0;
   let touchStartY = 0;
 
   const render = (index) => {
-    currentIndex = (index + cards.length) % cards.length;
-    const cardImage = cards[currentIndex].querySelector("img");
-    image.src = cards[currentIndex].href;
-    image.alt = cardImage?.alt || `Работа ${currentIndex + 1}`;
-    counter.textContent = `${currentIndex + 1} / ${cards.length}`;
+    currentIndex = (index + items.length) % items.length;
+    image.src = items[currentIndex].src;
+    image.alt = items[currentIndex].alt;
+    counter.textContent = `${currentIndex + 1} / ${items.length}`;
 
     const preload = (offset) => {
       const preloadImage = new Image();
-      preloadImage.src = cards[(currentIndex + offset + cards.length) % cards.length].href;
+      preloadImage.src = items[(currentIndex + offset + items.length) % items.length].src;
     };
     preload(-1);
     preload(1);
   };
 
-  const open = (index) => {
+  const open = (nextItems, index) => {
+    items = nextItems;
     render(index);
     if (!dialog.open) dialog.showModal();
     closeButton?.focus();
@@ -39,13 +57,26 @@
   cards.forEach((card, index) => {
     card.addEventListener("click", (event) => {
       event.preventDefault();
-      open(index);
+      open(galleryItems, index);
     });
   });
 
-  closeButton?.addEventListener("click", () => dialog.close());
-  previousButton?.addEventListener("click", () => render(currentIndex - 1));
-  nextButton?.addEventListener("click", () => render(currentIndex + 1));
+  const bindTap = (button, action) => {
+    if (!button) return;
+    button.addEventListener("click", (event) => {
+      event.preventDefault();
+      action();
+    });
+    button.addEventListener("touchend", (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      action();
+    }, { passive: false });
+  };
+
+  bindTap(closeButton, () => dialog.close());
+  bindTap(previousButton, () => render(currentIndex - 1));
+  bindTap(nextButton, () => render(currentIndex + 1));
 
   dialog.addEventListener("click", (event) => {
     if (event.target === dialog) dialog.close();
@@ -79,4 +110,8 @@
   dialog.addEventListener("close", () => {
     image.removeAttribute("src");
   });
+
+  const requestedWork = new URLSearchParams(window.location.search).get("work");
+  const requestedIndex = featuredItems.findIndex(({ slug }) => slug === requestedWork);
+  if (requestedIndex >= 0) open(featuredItems, requestedIndex);
 })();

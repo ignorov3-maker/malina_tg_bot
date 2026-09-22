@@ -78,23 +78,28 @@ h1 em, .final-cta em { color: var(--berry); font-family: Georgia, serif; font-we
 .section-heading h2, .final-cta h2 { margin-bottom: 22px; font-size: clamp(58px, 6.2vw, 108px); font-weight: 680; line-height: .9; letter-spacing: -.064em; }
 .section-heading > div > p { max-width: 760px; margin-bottom: 0; color: var(--muted); font-size: clamp(18px, 1vw, 22px); line-height: 1.62; }
 .service-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; }
-.service-card { position: relative; display: flex; flex-direction: column; min-height: clamp(500px, 29vw, 590px); padding: 18px; overflow: hidden; background: var(--white); border: 1px solid var(--line); border-radius: var(--radius); box-shadow: 0 12px 36px rgba(45,25,30,.055); transition: transform .28s ease, box-shadow .28s ease; }
+.service-card { position: relative; display: flex; flex-direction: column; min-height: clamp(500px, 29vw, 590px); padding: 18px; overflow: hidden; color: var(--service-fg, var(--ink)); background: var(--service-bg, var(--white)); border: 1px solid rgba(255,255,255,.28); border-radius: var(--radius); box-shadow: 0 12px 36px rgba(45,25,30,.075); isolation: isolate; transition: transform .28s ease, box-shadow .28s ease; }
+.service-card::after { position: absolute; right: -74px; bottom: -92px; z-index: -1; width: 230px; height: 230px; content: ""; background: radial-gradient(circle, var(--service-glow, rgba(255,255,255,.2)) 0 38%, transparent 70%); border-radius: 50%; pointer-events: none; }
 .service-card:hover { z-index: 2; box-shadow: var(--shadow-hover); transform: translateY(-7px); }
-.service-number { position: absolute; top: 26px; right: 26px; z-index: 2; min-width: 36px; padding: 8px 10px; color: var(--ink); background: rgba(255,255,255,.92); border-radius: 999px; box-shadow: 0 5px 18px rgba(0,0,0,.12); font-size: 13px; font-weight: 850; text-align: center; }
-.service-image { height: clamp(190px, 12vw, 270px); overflow: hidden; background: #d9d1c7; border-radius: 12px; }
+.service-number { position: absolute; top: 26px; right: 26px; z-index: 2; min-width: 36px; padding: 8px 10px; color: var(--service-number, var(--ink)); background: rgba(255,255,255,.92); border-radius: 999px; box-shadow: 0 5px 18px rgba(0,0,0,.12); font-size: 13px; font-weight: 850; text-align: center; }
+.service-image { position: relative; z-index: 1; height: clamp(190px, 12vw, 270px); overflow: hidden; background: #d9d1c7; border: 1px solid rgba(255,255,255,.28); border-radius: 12px; box-shadow: 0 14px 30px rgba(34,19,24,.12); }
 .service-image img { width: 100%; height: 100%; object-fit: cover; transition: transform .55s cubic-bezier(.2,.7,.2,1); }
 .service-image-duo { display: grid; grid-template-columns: 1.08fr .92fr; gap: 4px; background: rgba(255,255,255,.68); }
 .service-image-duo img { min-width: 0; }
 .service-image-duo img:first-child { object-position: 50% 58%; }
 .service-image-duo img:last-child { object-position: 50% 48%; }
 .service-card:hover .service-image img { transform: scale(1.035); }
-.service-card h3 { margin: clamp(24px, 1.6vw, 34px) 9px 14px; font-size: clamp(30px, 1.55vw, 38px); line-height: 1.05; letter-spacing: -.045em; }
-.service-card p { margin: 0 9px 28px; color: var(--muted); font-size: clamp(16px, .78vw, 18px); line-height: 1.55; }
+.service-card h3 { position: relative; z-index: 1; margin: clamp(24px, 1.6vw, 34px) 9px 14px; font-size: clamp(30px, 1.55vw, 38px); line-height: 1.05; letter-spacing: -.045em; }
+.service-card p { position: relative; z-index: 1; margin: 0 9px 28px; color: var(--service-muted, var(--muted)); font-size: clamp(16px, .78vw, 18px); line-height: 1.55; }
 .service-card > span { align-self: flex-start; margin: auto 9px 8px; padding: 10px 14px; background: rgba(255,255,255,.78); border: 1px solid currentColor; border-radius: 999px; font-size: clamp(11px, .58vw, 14px); font-weight: 900; letter-spacing: .07em; text-transform: uppercase; }
-.service-card-accent { color: white; background: var(--berry); }.service-card-accent p { color: rgba(255,255,255,.72); }
-.service-card-dark { color: white; background: var(--ink); }.service-card-dark p { color: #aaa; }
-.service-card-sand { background: var(--sand); }.service-card-pink { background: var(--pink); }.service-card-lime { background: var(--lime); }.service-card-outline { background: rgba(255,255,255,.38); border-color: rgba(82,67,65,.24); box-shadow: 0 12px 36px rgba(45,25,30,.035); }
-.service-card-half { min-height: clamp(500px, 29vw, 590px); }
+.service-card-print { --service-fg: #fff8f3; --service-muted: rgba(255,248,243,.78); --service-number: #78152f; --service-glow: rgba(245,198,114,.34); --service-bg: linear-gradient(145deg, #921f40 0%, #70132d 100%); }
+.service-card-souvenirs { --service-fg: #342313; --service-muted: rgba(52,35,19,.72); --service-number: #7b5217; --service-glow: rgba(255,250,224,.62); --service-bg: linear-gradient(145deg, #f1c66c 0%, #dda33e 100%); }
+.service-card-wide-format { --service-fg: #fffaf6; --service-muted: rgba(255,250,246,.78); --service-number: #9c3d22; --service-glow: rgba(255,210,173,.42); --service-bg: linear-gradient(145deg, #db7b50 0%, #bd5235 100%); }
+.service-card-stickers { --service-fg: #15362c; --service-muted: rgba(21,54,44,.72); --service-number: #356d59; --service-glow: rgba(241,255,246,.62); --service-bg: linear-gradient(145deg, #a6cdb5 0%, #72a388 100%); }
+.service-card-design { --service-fg: #fbf9ff; --service-muted: rgba(251,249,255,.78); --service-number: #4c438d; --service-glow: rgba(210,200,255,.38); --service-bg: linear-gradient(145deg, #776bc6 0%, #4f478f 100%); }
+.service-card-textile { --service-fg: #17343e; --service-muted: rgba(23,52,62,.72); --service-number: #326879; --service-glow: rgba(243,253,255,.68); --service-bg: linear-gradient(145deg, #b5d7df 0%, #82b2c2 100%); }
+.service-card-vehicle { --service-fg: #f8f7f4; --service-muted: rgba(248,247,244,.72); --service-number: #24252b; --service-glow: rgba(255,255,255,.18); --service-bg: linear-gradient(145deg, #3a3b45 0%, #202127 100%); }
+.service-card-signage { --service-fg: #fff8fb; --service-muted: rgba(255,248,251,.78); --service-number: #8e2453; --service-glow: rgba(255,196,220,.4); --service-bg: linear-gradient(145deg, #d45389 0%, #a52e63 100%); }
 .service-card-textile .service-image img { object-position: 50% 38%; }
 .service-card-signage .service-image img { object-position: 50% 68%; }
 .all-services { margin-top: 20px; }

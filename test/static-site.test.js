@@ -86,6 +86,22 @@ test("references page lists every local reference image", () => {
   assert.match(galleryScript, /touchend/);
 });
 
+test("services keep the requested order and eight distinct color themes", () => {
+  const services = [...index.matchAll(/<article class="service-card ([^"]+)">[\s\S]*?<div class="service-number">(\d{2})<\/div>[\s\S]*?<h3>([^<]+)<\/h3>/g)]
+    .map(([, theme, number, title]) => ({ theme, number, title }));
+  assert.deepEqual(services.map(({ number, title }) => `${number} ${title}`), [
+    "01 Полиграфия",
+    "02 Сувенирная продукция",
+    "03 Широкоформатная печать",
+    "04 Наклейки и таблички",
+    "05 Графический дизайн",
+    "06 Одежда и текстиль",
+    "07 Брендирование авто",
+    "08 Вывески",
+  ]);
+  assert.equal(new Set(services.map(({ theme }) => theme)).size, 8);
+});
+
 test("MAX contacts are named in the requested order", () => {
   assert.match(index, /social-max-contacts[^>]*>\s*<a[^>]*>\s*Виктория\s*<\/a>\s*<a[^>]*>\s*Кристина\s*<\/a>/i);
 });

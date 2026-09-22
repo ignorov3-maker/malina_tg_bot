@@ -17,8 +17,9 @@ test("site contains no data-entry or submission mechanisms", () => {
   assert.doesNotMatch(`${html}\n${galleryScript}`, /\b(?:fetch|XMLHttpRequest|WebSocket|sendBeacon|localStorage|sessionStorage)\b/i);
   assert.match(index, /href="mailto:tipo\.malina@mail\.ru"/i);
   assert.match(index, /href="https:\/\/yandex\.ru\/maps\/959\/sevastopol\/house\/ulitsa_borisova_1_7\/Z0oYcgNjS0wHQFpufXl5dH5qZA==\/"/i);
-  assert.doesNotMatch(html, /href="tel:/i);
-  assert.doesNotMatch(`${index}\n${references}`, /\+7\s*\(\d{3}\)|09:00|18:00/i);
+  assert.match(index, /href="tel:\+79189586534"[^>]*>\+7 \(918\) 958-65-34<\/a>/i);
+  assert.match(index, /href="tel:\+79786868363"[^>]*>\+7 \(978\) 686-83-63<\/a>/i);
+  assert.doesNotMatch(`${index}\n${references}`, /09:00|18:00/i);
   assert.doesNotMatch(index, /<script\b/i);
   assert.doesNotMatch(privacy, /<script\b/i);
   assert.match(references, /<script\s+src="gallery\.js[^\"]*"\s+defer><\/script>/i);
@@ -77,6 +78,12 @@ test("external links use safe new-window attributes", () => {
     assert.match(link, /target="_blank"/i);
     assert.match(link, /rel="[^"]*noopener[^"]*noreferrer[^"]*"/i);
   }
+});
+
+test("footer keeps only the privacy link", () => {
+  const footer = index.match(/<footer>[\s\S]*?<\/footer>/i)?.[0] ?? "";
+  assert.match(footer, /href="privacy\.html"/i);
+  assert.doesNotMatch(footer, /href="references\.html"|href="https:\/\/(?:vk\.ru|max\.ru)/i);
 });
 
 test("content security policy blocks connections and forms", () => {

@@ -100,7 +100,7 @@ h1 em, .final-cta em { color: var(--berry); font-family: Georgia, serif; font-we
 .service-card-textile { --service-fg: #17343e; --service-muted: rgba(23,52,62,.72); --service-number: #326879; --service-glow: rgba(243,253,255,.68); --service-bg: linear-gradient(145deg, #b5d7df 0%, #82b2c2 100%); }
 .service-card-vehicle { --service-fg: #f8f7f4; --service-muted: rgba(248,247,244,.72); --service-number: #24252b; --service-glow: rgba(255,255,255,.18); --service-bg: linear-gradient(145deg, #3a3b45 0%, #202127 100%); }
 .service-card-signage { --service-fg: #fff8fb; --service-muted: rgba(255,248,251,.78); --service-number: #8e2453; --service-glow: rgba(255,196,220,.4); --service-bg: linear-gradient(145deg, #d45389 0%, #a52e63 100%); }
-.service-card-textile .service-image img { object-position: 50% 38%; }
+.service-card-textile .service-image img { object-position: 50% 52%; }
 .service-card-signage .service-image img { object-position: 50% 68%; }
 .all-services { margin-top: 20px; }
 .all-services summary { display: inline-flex; gap: 13px; align-items: center; min-height: 48px; padding: 8px 2px; color: var(--berry-dark); cursor: pointer; font-size: clamp(16px, .9vw, 20px); font-weight: 850; list-style: none; transition: color .2s, transform .2s; }

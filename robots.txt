@@ -2,3 +2,4 @@ User-agent: *
 Allow: /
 
 Sitemap: https://malina92.ru/sitemap.xml
+Host: malina92.ru

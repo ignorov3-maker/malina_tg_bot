@@ -9,6 +9,8 @@ const index = fs.readFileSync(path.join(root, "index.html"), "utf8");
 const privacy = fs.readFileSync(path.join(root, "privacy.html"), "utf8");
 const references = fs.readFileSync(path.join(root, "references.html"), "utf8");
 const galleryScript = fs.readFileSync(path.join(root, "gallery.js"), "utf8");
+const robots = fs.readFileSync(path.join(root, "robots.txt"), "utf8");
+const sitemap = fs.readFileSync(path.join(root, "sitemap.xml"), "utf8");
 const html = `${index}\n${privacy}\n${references}`;
 
 test("site contains no data-entry or submission mechanisms", () => {
@@ -17,8 +19,9 @@ test("site contains no data-entry or submission mechanisms", () => {
   assert.doesNotMatch(`${html}\n${galleryScript}`, /\b(?:fetch|XMLHttpRequest|WebSocket|sendBeacon|localStorage|sessionStorage)\b/i);
   assert.match(index, /href="mailto:tipo\.malina@mail\.ru"/i);
   assert.match(index, /href="https:\/\/yandex\.ru\/maps\/959\/sevastopol\/house\/ulitsa_borisova_1_7\/Z0oYcgNjS0wHQFpufXl5dH5qZA==\/"/i);
-  assert.match(index, /href="tel:\+79189586534"[^>]*>\+7 \(918\) 958-65-34<\/a>/i);
-  assert.match(index, /href="tel:\+79786868363"[^>]*>\+7 \(978\) 686-83-63<\/a>/i);
+  assert.match(index, /href="https:\/\/max\.ru\/u\/f9LHodD0cOIs1AilU30kqkItviyj9LB4zMN5PxjAgb7NSpBiFRblPg5MD1c"/i);
+  assert.match(index, /href="https:\/\/max\.ru\/u\/f9LHodD0cOLRx4pXHHhTWx_PcOHrQflHXTTH00_vcAIuDhbOthbekw5eF5U"/i);
+  assert.doesNotMatch(index, /href="tel:/i);
   assert.doesNotMatch(`${index}\n${references}`, /09:00|18:00/i);
   assert.doesNotMatch(index, /<script\b/i);
   assert.doesNotMatch(privacy, /<script\b/i);
@@ -33,9 +36,20 @@ test("site contains no analytics or embedded third-party content", () => {
 test("privacy policy matches the actual operator and site configuration", () => {
   assert.match(privacy, /ИП Романовская Светлана Евгеньевна/);
   assert.match(privacy, /ИНН[\s\S]*643890704502/);
-  assert.match(privacy, /GitHub Pages/);
+  assert.match(privacy, /malina92\.ru/);
+  assert.match(privacy, /Beget/);
   assert.match(privacy, /на сайте нет форм, личного кабинета, встроенного чата/i);
   assert.doesNotMatch(privacy, /Пузин|tipografiakrd|Onicon|LiveInternet|Яндекс\.Метрик|Google Analytics|регистрац|форма заявки/i);
+});
+
+test("production domain is declared consistently", () => {
+  assert.match(index, /rel="canonical" href="https:\/\/malina92\.ru\/"/i);
+  assert.match(privacy, /rel="canonical" href="https:\/\/malina92\.ru\/privacy\.html"/i);
+  assert.match(references, /rel="canonical" href="https:\/\/malina92\.ru\/references\.html"/i);
+  assert.match(robots, /Sitemap: https:\/\/malina92\.ru\/sitemap\.xml/i);
+  for (const page of ["https://malina92.ru/", "https://malina92.ru/privacy.html", "https://malina92.ru/references.html"]) {
+    assert.match(sitemap, new RegExp(`<loc>${page.replaceAll(".", "\\.")}</loc>`));
+  }
 });
 
 test("public wording presents the image collection as completed work", () => {

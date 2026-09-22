@@ -21,6 +21,8 @@
 - `references.html`;
 - `gallery.js`;
 - `styles.css`;
+- `robots.txt`;
+- `sitemap.xml`;
 - папку `assets` целиком.
 
 Остальные файлы относятся к разработке и не нужны на хостинге.

@@ -1,7 +1,7 @@
 FROM nginx:alpine
 
 COPY deploy/nginx.conf /etc/nginx/conf.d/default.conf
-COPY index.html privacy.html references.html styles.css gallery.js /usr/share/nginx/html/
+COPY index.html privacy.html references.html styles.css gallery.js robots.txt sitemap.xml /usr/share/nginx/html/
 COPY assets/ /usr/share/nginx/html/assets/
 
 EXPOSE 80

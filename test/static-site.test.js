@@ -86,6 +86,10 @@ test("references page lists every local reference image", () => {
   assert.match(galleryScript, /touchend/);
 });
 
+test("MAX contacts are named in the requested order", () => {
+  assert.match(index, /social-max-contacts[^>]*>\s*<a[^>]*>\s*Виктория\s*<\/a>\s*<a[^>]*>\s*Кристина\s*<\/a>/i);
+});
+
 test("featured work cards open the exact image in the gallery", () => {
   const workLinks = [...index.matchAll(/class="work-card-link"[^>]*href="references\.html\?work=([^"]+)"/g)];
   assert.equal(workLinks.length, 10);

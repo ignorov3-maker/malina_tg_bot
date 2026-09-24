@@ -93,7 +93,14 @@ test("gallery uses sized previews and keeps originals for large viewing", () => 
     assert.ok(Number(width) > 0 && Number(height) > 0);
     assert.ok(fs.existsSync(path.join(root, "assets", "references", "previews", name)));
   }
-  assert.match(references, /class="pill-button" href="\.\/">На главную/);
+  assert.match(references, /class="pill-button" href="index\.html">На главную/);
+});
+
+test("nginx serves both the root URL and index.html without a redirect loop", () => {
+  const nginx = fs.readFileSync(path.join(root, "deploy", "nginx.conf"), "utf8");
+  assert.match(nginx, /index index\.html;/);
+  assert.doesNotMatch(nginx, /location\s*=\s*\/index\.html\s*\{[\s\S]*?return\s+30\d\s+\//);
+  assert.match(privacy, /href="index\.html"/);
 });
 
 test("services keep the requested order and eight distinct color themes", () => {

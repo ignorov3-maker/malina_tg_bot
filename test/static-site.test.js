@@ -86,6 +86,16 @@ test("references page lists every local reference image", () => {
   assert.match(galleryScript, /touchend/);
 });
 
+test("gallery uses sized previews and keeps originals for large viewing", () => {
+  const cards = [...references.matchAll(/<a class="reference-card" href="assets\/references\/(reference-\d{3}\.jpg)"[^>]*><img src="assets\/references\/previews\/\1" width="(\d+)" height="(\d+)"[^>]*>/g)];
+  assert.equal(cards.length, 288);
+  for (const [, name, width, height] of cards) {
+    assert.ok(Number(width) > 0 && Number(height) > 0);
+    assert.ok(fs.existsSync(path.join(root, "assets", "references", "previews", name)));
+  }
+  assert.match(references, /class="pill-button" href="\.\/">На главную/);
+});
+
 test("services keep the requested order and eight distinct color themes", () => {
   const services = [...index.matchAll(/<article class="service-card ([^"]+)">[\s\S]*?<div class="service-number">(\d{2})<\/div>[\s\S]*?<h3>([^<]+)<\/h3>/g)]
     .map(([, theme, number, title]) => ({ theme, number, title }));

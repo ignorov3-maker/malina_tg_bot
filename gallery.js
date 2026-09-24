@@ -15,6 +15,27 @@
     src: card.href,
     alt: card.querySelector("img")?.alt || `Работа ${index + 1}`,
   }));
+  const deferredPreviews = cards
+    .map((card) => card.querySelector("img[data-src]"))
+    .filter(Boolean);
+
+  const loadPreview = (preview) => {
+    preview.src = preview.dataset.src;
+    delete preview.dataset.src;
+  };
+
+  if ("IntersectionObserver" in window) {
+    const observer = new IntersectionObserver((entries) => {
+      entries.forEach((entry) => {
+        if (!entry.isIntersecting) return;
+        loadPreview(entry.target);
+        observer.unobserve(entry.target);
+      });
+    }, { rootMargin: "250px 0px" });
+    deferredPreviews.forEach((preview) => observer.observe(preview));
+  } else {
+    deferredPreviews.forEach(loadPreview);
+  }
   const featuredItems = [
     { slug: "display", src: "assets/portfolio/display.webp", alt: "Фирменная выставочная конструкция для винной продукции" },
     { slug: "award", src: "assets/portfolio/award.webp", alt: "Акриловая награда для школьной футбольной лиги" },

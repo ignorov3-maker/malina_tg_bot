@@ -16,7 +16,7 @@ PREVIEWS = SOURCES / "previews"
 PAGE = ROOT / "references.html"
 CARD = re.compile(
     r'(<a class="reference-card" href="assets/references/(reference-\d{3}\.jpg)"[^>]*><img )'
-    r'src="[^"]+"(?: width="\d+" height="\d+")?'
+    r'(?:src|data-src)="[^"]+"(?: width="\d+" height="\d+"(?: style="aspect-ratio: [^"]+")?)?'
 )
 
 
@@ -38,9 +38,10 @@ def main() -> None:
     def replace(match: re.Match[str]) -> str:
         prefix, name = match.groups()
         width, height = dimensions[name]
+        source_attribute = "src" if int(name[10:13]) <= 8 else "data-src"
         return (
-            f'{prefix}src="assets/references/previews/{name}" '
-            f'width="{width}" height="{height}"'
+            f'{prefix}{source_attribute}="assets/references/previews/{name}" '
+            f'width="{width}" height="{height}" style="aspect-ratio: {width} / {height}"'
         )
 
     html, count = CARD.subn(replace, html)

@@ -87,13 +87,31 @@ test("references page lists every local reference image", () => {
 });
 
 test("gallery uses sized previews and keeps originals for large viewing", () => {
-  const cards = [...references.matchAll(/<a class="reference-card" href="assets\/references\/(reference-\d{3}\.jpg)"[^>]*><img src="assets\/references\/previews\/\1" width="(\d+)" height="(\d+)"[^>]*>/g)];
+  const cards = [...references.matchAll(/<a class="reference-card" href="assets\/references\/(reference-\d{3}\.jpg)"[^>]*><img (src|data-src)="assets\/references\/previews\/\1" width="(\d+)" height="(\d+)"[^>]*>/g)];
   assert.equal(cards.length, 288);
-  for (const [, name, width, height] of cards) {
+  assert.equal(cards.filter(([, , attribute]) => attribute === "src").length, 8);
+  for (const [, name, , width, height] of cards) {
     assert.ok(Number(width) > 0 && Number(height) > 0);
     assert.ok(fs.existsSync(path.join(root, "assets", "references", "previews", name)));
   }
+  assert.match(galleryScript, /IntersectionObserver/);
+  assert.match(galleryScript, /rootMargin: "250px 0px"/);
   assert.match(references, /class="pill-button" href="index\.html">На главную/);
+});
+
+test("home page prioritizes a compact hero and uses optimized images", () => {
+  const homeImages = [...index.matchAll(/<img[^>]+src="assets\/home\/([^"]+\.webp)"/g)];
+  assert.ok(homeImages.length >= 20);
+  const names = new Set(homeImages.map(([, name]) => name));
+  const totalBytes = [...names].reduce((total, name) => {
+    const file = path.join(root, "assets", "home", name);
+    assert.ok(fs.existsSync(file), `${name} is missing`);
+    return total + fs.statSync(file).size;
+  }, 0);
+  assert.ok(totalBytes < 1_500_000, `home images total ${totalBytes} bytes`);
+  assert.doesNotMatch(index, /<img[^>]+src="assets\/(?:services|portfolio)\//);
+  assert.match(index, /rel="preload" as="image" href="assets\/home\/hero-studio\.webp"/);
+  assert.match(index, /class="hero-image"[^>]+loading="eager" fetchpriority="high"/);
 });
 
 test("nginx serves both the root URL and index.html without a redirect loop", () => {

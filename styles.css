@@ -198,6 +198,7 @@ footer { display: grid; grid-template-columns: 1fr 1.2fr .8fr; gap: 35px; align-
 .references-gallery { columns: 4 280px; column-gap: 16px; padding: 0 clamp(18px, 5vw, 80px) clamp(80px, 10vw, 150px); }
 .reference-card { position: relative; display: block; margin: 0 0 16px; overflow: hidden; background: #ddd2ca; border-radius: var(--radius); break-inside: avoid; box-shadow: 0 12px 34px rgba(45,25,30,.08); }
 .reference-card img { display: block; width: 100%; height: auto; transition: transform .45s cubic-bezier(.2,.7,.2,1), filter .3s; }
+.reference-card img:not([src]) { visibility: hidden; }
 .reference-card span { position: absolute; right: 12px; bottom: 12px; display: grid; min-width: 34px; height: 34px; padding: 0 8px; place-items: center; color: white; background: rgba(24,23,22,.72); border: 1px solid rgba(255,255,255,.28); border-radius: 999px; backdrop-filter: blur(8px); font-size: 11px; font-weight: 850; }
 .reference-card:hover img, .reference-card:focus-visible img { transform: scale(1.025); }.reference-card:hover { box-shadow: var(--shadow-hover); }
 .gallery-lightbox { width: 100vw; max-width: none; height: 100dvh; max-height: none; margin: 0; padding: clamp(18px, 3vw, 42px); color: white; background: rgba(20,8,13,.97); border: 0; overflow: hidden; }
